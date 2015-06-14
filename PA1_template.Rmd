@@ -7,7 +7,7 @@ source("PA1_template.Rmd")
 -->
 <!-- # узоры в пешеходных шагов.-->
 
-Juan Reza
+
 6/11/2015
 
 `r Sys.setlocale("LC_ALL", "C")`
@@ -149,10 +149,9 @@ stepInDays
   days <- daysRows[!duplicated(daysRows) ]
 
   dayNumber <-  1:length( days)
-#TODO: x is dayNumber
-
-  hist( totalStepsEachDay, col="yellow", oma="2", 
-  xlab="Total Steps By Day" , main="Total Steps By Day" )
+  hh <-  c( dayNumber, totalStepsEachDay)
+  hist( hh, col="yellow", oma="2", 
+    xlab="Total Steps By Day" , main="Total Steps By Day" )
  abline( v=12, lwd=2)
  axis(side=1, at=seq(0,100, 10), labels=seq(0,1000,100))
  invisible()
