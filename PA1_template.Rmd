@@ -32,6 +32,13 @@ An informal count of missing data points showed that only about	1.3%	percent of 
 
 # Analysis of Data 
 
+See the Supplementary Section for code for [reading the data](#reading)
+
+```{r}
+ t <-  read.table( "activity.csv",  header=TRUE, sep=",",  comment.char = "#",  quote = "\"", stringsAsFactors=FALSE)
+```
+
+
 ## Data Cleaning
 The presence of missing-data placeholders, **NA**, could bias the analysis. Another researcher ([Peng](https://class.coursera.org/repdata-015/lecture/59)) suggested that missing data could be filled in by taking an average of steps at the corresponding interval across all days sampled. However, that model could introduce a bias to the comparison of weekdays versus weekends. For example, averaging in weekday steps during lunch would add unjustified steps to a corresponding  interval with a missing measureent on the weenend. Other less-scheduled times of walking could also introduce unjustified measurement estimates.
 
@@ -165,10 +172,10 @@ medianMaxSteps
 
 
 
-`r histClean <- function( tClean ) { # plot
+`r histClean <- function( tClean ) {
   totalStepsEachDay <- totalStepsEachDayFunction(tClean )
   totalStepsEachDayHistogram( totalStepsEachDay  )
- #  invisible()
+  invisible()
 }`
 
 
@@ -296,14 +303,20 @@ The method of loading and processing data are shown in the  [Data Cleaning secti
 
 The total number of steps observed per day is  `r  totalStepsEachDay<-totalStepsEachDayFunction(t)
 totalStepsEachDay`.
-  
-<!-- 2. If you do not understand the difference between a histogram and a barplot, research the difference between them. Make a histogram of the total number of steps taken each day -->
-Following is an exploratory histogram of the total number of steps observed by day.
 
-totalStepsEachDayHistogram( totalStepsEachDay)
+
+<!-- 2. If you do not understand the difference between a histogram and a barplot, research the difference between them. Make a histogram of the total number of steps taken each day -->
+###Following is an exploratory histogram of the total number of steps observed by day.
+
+
+```{r, echo=FALSE, eval=TRUE}
+histClean( t)
+```
+
+
 
 <!--3. Calculate and report the mean and median of the total number of steps taken per day -->
-The  mean total number of steps observed per day is r meanOfTotalStepsPerDayfunction (  totalStepsEachDay ),  ignoring  the missing values in the dataset.
+The  mean total number of steps observed per day is `r meanOfTotalStepsPerDayfunction (  totalStepsEachDay )`,  ignoring  the missing values in the dataset.
  Median is `r medianOfTotalStepsPerDayfunction (  totalStepsEachDay )`
 
 
@@ -348,9 +361,11 @@ This section explores the raw data. The raw data includes missing points where d
 <!-- 4.Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. --> 
 4. The following is based on the revised activity data set.
 #### Here is a histogram of the total number of steps each day.
-```{r, echo=FALSE}
+
+```{r, echo=FALSE, eval=TRUE}
 histClean( tClean)
 ```
+
 It was discovered that all or nearly all blocks of time where NA is present (measurements missed) are preceeded and succeeded by zero steps. As a result of the interpolation strategy, which is based on interpolating the surrounding non-NA values, all these NA points are converted to zero steps.
 
 
@@ -381,8 +396,12 @@ I believe the problem of computing datasets with missing values that I encounter
 # Conclusion
 In a real research paper, this section would recap the paper.
 
-# Supplementary Materials / gory details [#supp]
-
+# Supplementary Materials / gory details 
+[#supp]
+### reading data [#reading]
+```{r}
+initActivityData
+```
 
 ## Data-Cleaning Strategy
 
@@ -392,11 +411,65 @@ The interpolation algorithm takes two parameters.
 1. activity data.frame
 2. MINOR_GAP =  `r MINOR_GAP()`, which the number of 5-minute intervals with NA that we consider "minor" for interpolation purposes. The interpolation will look ahead up to MINOR_GAP number of consecutive intervals with missing step values.
 
-The interpolation function is: <!-- just list the code of cleanData here --/
-```{r, echo=TRUE, eval=TRUE}
-cleanData
-```
+The interpolation function is: <!-- just list the code of cleanData here -->
 
+```{r, echo=TRUE, eval=TRUE}
+cleanData  <-  function(t) {
+  previousValue <- 0L
+  nextValue <- t[[2,1]]
+  nextValue <- if ( is.na(nextValue)) 0L
+  n <- nrow(t)
+  
+# traverse table and fix all NA step values by interpolation to adjacent values 
+  previousValue <- 0L
+
+  for ( i in 1L:(n-1)) {
+    if ( is.na( t[[i,1]] )) { #1
+      t[[i,1]] <-  as.integer( mean( c(previousValue, nextValue)))
+      if ( is.na( t[[i,1]])) {
+         t[[i,1]] <- 0L
+      }
+      
+# setup next nextValue
+      if ( ! is.na(t[[ i+1, 1]]))   {
+        nextValue <- t[[ i+1, 1]] # the easy case.
+                     
+      } else { # infer next step (after present visited ith and next is NA
+       
+        if ( previousValue==0 ) { # no activity across adjacent intervals
+          nextValue <- 0L
+          
+        } else { # find next near non-NA step value and use that
+          nextValue <- 0L
+        
+          # get next non-NA value. assume continued activity thru gap
+          for (j in (i+ MINOR_GAP()):(i+1)) {
+            if ( ! is.na( t[[ j,1]] )) {
+              nextValue <- as.integer( t[[ j,1]] )
+              
+            } else {
+              nextValue <- as.integer( 
+                  nextValue * ( MINOR_GAP() / (MINOR_GAP() +1)) )
+            }
+          }
+        }
+      }
+
+# interpolate present step 
+#  from known previous and inferred next non-NA step value
+      t[[i,1]] <-as.integer( mean(c(previousValue, nextValue)) )
+      
+    } else { 
+      # no processing  of this cell needed: i-th is not NA
+    }
+     
+    # setup new previousValue for the next iteration
+    previousValue <- as.integer( t[[i,1]])
+  }
+  t # return clean data.frame
+}
+```
+### average number of steps taken 
 **meanStepsPerDay** is
 ```{r, echo=TRUE, eval=TRUE}
 
@@ -405,6 +478,8 @@ meanStepsEachDayFunction(t)
 
 ## Exploratory Manual activity performed [#checksorted]
 Scanned the activity data file to confirm that (1) steps column contains NA values, and (2) date and interval contain valid (non-NA) values.
+
+
 ```{r, echo=TRUE, eval=FALSE}
 ## Manual Check of input already sorted
 
@@ -430,6 +505,256 @@ t.without.s.rows <- t[!t.vec %in% s.vec,]
   
 ```
 
+
+# All code used to generate analysis in this paper
+```{r echo=TRUE, eval=FALSE}
+ Sys.setlocale("LC_ALL", "C")
+
+ cleanData  <-  function(t) {
+  previousValue <- 0L
+  nextValue <- t[[2,1]]
+  nextValue <- if ( is.na(nextValue)) 0L
+  n <- nrow(t)
+  
+# traverse table and fix all NA step values by interpolation to adjacent values 
+  previousValue <- 0L
+
+  for ( i in 1L:(n-1)) {
+    if ( is.na( t[[i,1]] )) { #1
+      t[[i,1]] <-  as.integer( mean( c(previousValue, nextValue)))
+      if ( is.na( t[[i,1]])) {
+         t[[i,1]] <- 0L
+      }
+      
+# setup next nextValue
+      if ( ! is.na(t[[ i+1, 1]]))   {
+        nextValue <- t[[ i+1, 1]] # the easy case.
+                     
+      } else { # infer next step (after present visited ith and next is NA
+       
+        if ( previousValue==0 ) { # no activity across adjacent intervals
+          nextValue <- 0L
+          
+        } else { # find next near non-NA step value and use that
+          nextValue <- 0L
+        
+          # get next non-NA value. assume continued activity thru gap
+          for (j in (i+ MINOR_GAP()):(i+1)) {
+            if ( ! is.na( t[[ j,1]] )) {
+              nextValue <- as.integer( t[[ j,1]] )
+              
+            } else {
+              nextValue <- as.integer( 
+                  nextValue * ( MINOR_GAP() / (MINOR_GAP() +1)) )
+            }
+          }
+        }
+      }
+
+# interpolate present step 
+#  from known previous and inferred next non-NA step value
+      t[[i,1]] <-as.integer( mean(c(previousValue, nextValue)) )
+      
+    } else { 
+      # no processing  of this cell needed: i-th is not NA
+    }
+     
+    # setup new previousValue for the next iteration
+    previousValue <- as.integer( t[[i,1]])
+  }
+  t # return clean data.frame
+}
+
+
+The details are provided in the [Supplementary: interpolation of missing data](#interpolate) section.
+
+<!-- analytic functions declarations -->
+ initActivityData <- function() {
+  t <-  read.table( "activity.csv",  header=TRUE, sep=",",  comment.char = "#",  quote = "\"", stringsAsFactors=FALSE)
+t
+}
+
+t <- initActivityData ()
+
+
+ totalStepsEachDayFunction <- function(t) {
+  daysRows <- t[,"date"]
+  days <- daysRows[!duplicated(daysRows) ]
+
+  stepInDays <- integer()
+  for (day in days) {
+    stepInDays[day] <- sum( t[  t$date==day, ][, "steps"] , na.rm=TRUE)
+  }
+stepInDays 
+}
+
+ meanStepsEachDayFunction <- function(t) {
+  daysRows <- t[,"date"]
+  days <- daysRows[!duplicated(daysRows) ]
+  meanStepsEachDay <- sum( t$steps, na.rm=TRUE) / length(days)
+  meanStepsEachDay
+}
+
+
+ totalStepsEachDayHistogram <- function( totalStepsEachDay) { 
+
+  daysRows <- t[,"date"]
+  days <- daysRows[!duplicated(daysRows) ]
+
+  dayNumber <-  1:length( days)
+#TODO: x is dayNumber
+
+  hist( totalStepsEachDay, col="yellow", oma="2", 
+  xlab="Total Steps By Day" , main="Total Steps By Day" )
+ abline( v=12, lwd=2)
+ axis(side=1, at=seq(0,100, 10), labels=seq(0,1000,100))
+ invisible()
+}
+
+
+
+ meanOfTotalStepsPerDayfunction <- function( totalStepsEachDay ) {
+  meanMaxSteps <- mean( totalStepsEachDay , na.rm=TRUE)
+meanMaxSteps 
+}
+
+ medianOfTotalStepsPerDayfunction <- function( totalStepsEachDay ) {
+  medianMaxSteps <- median( totalStepsEachDay , na.rm=TRUE)
+medianMaxSteps 
+}
+
+
+
+ histClean <- function( tClean ) { # plot
+  totalStepsEachDay <- totalStepsEachDayFunction(tClean )
+  totalStepsEachDayHistogram( totalStepsEachDay  )
+ #  invisible()
+}
+
+
+
+ plotMeanStepsByInterval <- function( t) {
+  
+  meanOfTotalStepsAllIntervals1 <- numeric( 24*12 ) # 24 hours times 12 five-minute intervals per hour
+  
+  for (i in 1: length(meanOfTotalStepsAllIntervals1)) {
+    intervalbaseMinute <-  (i-1)*5
+    meanOfTotalStepsAllIntervals1[i] <- mean( t[ t$interval==intervalbaseMinute ,]$steps , na.rm = TRUE)
+    if ( is.nan(meanOfTotalStepsAllIntervals1[i])) { meanOfTotalStepsAllIntervals1[i] <- 0}
+  }
+  par( mfrow=c(2,1) )
+  par( cex=0.6)
+  par(mar=c(3,3,0,0))
+  plot( c(1:( 24*12)) , meanOfTotalStepsAllIntervals1, type="l" , main="Raw mean steps per interval across all days", col="red")
+  invisible()
+}
+
+
+ intervalWithMaxMeanStepsByInterval <- function( t) {
+  
+  meanOfTotalStepsAllIntervals1 <- numeric( 24*12 ) # 24 hours times 12 five-minute intervals per hour
+  intervalWithMax <- 0L
+  
+  for (i in 1: length(meanOfTotalStepsAllIntervals1)) {
+    intervalbaseMinute <-  (i-1)*5
+    m <- mean( t[ t$interval==intervalbaseMinute ,]$steps , na.rm = TRUE)
+    if ( is.nan(m)) { m <- 0L}
+    intervalWithMax <- if( m > intervalWithMax) meanOfTotalStepsAllIntervals1[i]
+  }
+  intervalWithMax
+}
+
+ intervalWithMaxMeanStepsByIntervalBYMAXOFARRAY <- function( t) {
+  
+  meanOfTotalStepsAllIntervals1 <- numeric( 24*12 ) # 24 hours times 12 five-minute intervals per hour
+  intervalWithMax <- 0L
+  
+  for (i in 1: length(meanOfTotalStepsAllIntervals1)) {
+    intervalbaseMinute <-  (i-1)*5
+    meanOfTotalStepsAllIntervals1[i] <- max( t[ t$interval==intervalbaseMinute ,]$steps , na.rm = TRUE)
+    if ( is.nan(meanOfTotalStepsAllIntervals1[i])) { meanOfTotalStepsAllIntervals1[i] <- 0L}
+  }
+  intervalWithMax <- max(meanOfTotalStepsAllIntervals1)
+  intervalWithMax
+}
+
+
+ maxMeanStepsByInterval <- function( t) {
+  
+  meanOfTotalStepsAllIntervals1 <- numeric( 24*12 ) # 24 hours times 12 five-minute intervals per hour
+  
+  for (i in 1: length(meanOfTotalStepsAllIntervals1)) {
+    intervalbaseMinute <-  (i-1)*5
+    meanOfTotalStepsAllIntervals1[i] <- mean( t[ t$interval==intervalbaseMinute ,]$steps , na.rm = TRUE)
+    if ( is.nan(meanOfTotalStepsAllIntervals1[i])) { meanOfTotalStepsAllIntervals1[i] <- 0}
+  }
+  max <- max( meanOfTotalStepsAllIntervals1)
+  max
+}
+
+
+  totalMissingValues <- function(t) {
+  missingCount <- length( t$steps[ is.na(t$steps)])
+  missingCount
+}
+
+
+ tClean <- cleanData(t)
+weekdayWeekendFactor <-  factor( c(1,2), levels=c("Weekdays","Weekends"))
+
+# for each interval number, get mean of steps in that interval across each day
+ plotWeekdayVsWeekendPanelFunction <- function( tClean) {
+  tClean$wkt <-  ifelse( strftime( tClean$date, format="%u") %in% c("6","7"), 2, 1)
+  
+  weekdayWeekendFactor <- factor(tClean$wkt, c(1,2), labels=c("WeekDay","WeekEnd"))
+  tCleanWeekday <-  tClean[ tClean$wkt == 1, ]
+  tCleanWeekend <-  tClean[ tClean$wkt == 2, ]
+  tClean$wkt <- weekdayWeekendFactor
+    
+  meanOfTotalStepsAllIntervals1 <- numeric( 24*12 ) # 24 hours times 12 five-minute intervals per hour
+  meanOfTotalStepsAllIntervals2 <- numeric( 24*12 )
+                                            
+  for (i in 1: length(meanOfTotalStepsAllIntervals1)) {
+    intervalbaseMinute <-  (i-1)*5
+    meanOfTotalStepsAllIntervals1[i] <- mean( tCleanWeekday[ tCleanWeekday$interval==intervalbaseMinute ,]$steps )
+     if ( is.nan(meanOfTotalStepsAllIntervals1[i])) { meanOfTotalStepsAllIntervals1[i] <- 0}
+    meanOfTotalStepsAllIntervals2[i] <- mean( tCleanWeekend[ tCleanWeekend$interval==intervalbaseMinute ,]$steps )
+     if ( is.nan(meanOfTotalStepsAllIntervals2[i])) { meanOfTotalStepsAllIntervals2[i] <-0}
+  }
+  
+  par( mfrow=c(2,1) )
+  par( cex=0.6)
+  par(mar=c(3,3,0,0))
+  plot( c(1:( 24*12)) , meanOfTotalStepsAllIntervals1, type="l" , main="Weekdays", col="blue") # xLim=c(100:288))
+  plot( c(1:( 24*12)) , meanOfTotalStepsAllIntervals2, type="l" , main="Weekends", col="purple") # xLim=c(100:288))
+  invisible()
+}
+
+
+  totalStepsEachDay<-totalStepsEachDayFunction(t)
+totalStepsEachDay
+
+ meanOfTotalStepsPerDayfunction (  totalStepsEachDay )
+
+ medianOfTotalStepsPerDayfunction (  totalStepsEachDay )
+
+ floor( ((5*806) -2*(60*24)) / 60)
+
+ intervalWithMaxMeanStepsByIntervalBYMAXOFARRAY(t)
+
+ maxMeanStepsByInterval(t)
+ totalMissingValues(t)
+  tClean <- cleanData(t)
+
+ MINOR_GAP()
+
+
+
+
+ t <- initActivityData()
+
+
+```
 
 ## Configuration Control
 
