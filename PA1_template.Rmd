@@ -1,890 +1,526 @@
-# Patterns of Steps:  Reproducible Research Assignment 1
-<!-- "Назначение 1: узоры в шагов: повторяемым научные исследования" -->
-<!-- title: "Patterns of Steps:  Reproducible Research Assignment 1" -->
+# Reproducible Research Assignment 1 PA_tempateA.Rmd
 <!--
 setwd("c:/edu/_DataScienceJohnsHopkins/_ReproducibleResearch/_ASGN1")
 source("PA1_template.Rmd")
 -->
-<!-- # узоры в пешеходных шагов.-->
-
-
-6/11/2015
-
-`r Sys.setlocale("LC_ALL", "C")`
 
 This document is for [Assignment 1](https://class.coursera.org/repdata-015/human_grading/view/courses/973516/assessments/3/submissions).
 
-# Abstract
+##Loading and preprocessing the data
 
-We want to discover the differences in activity patterns between weekdays and weekends.
-We also want to find the time of day when the most steps occur.
- To operationalize this approach we take 5-minute intervals across all days in a sample, and compute the average number of steps at each time of day. The interval with the greatest number of steps (on average) reveals the pattern of interest.
 
-# Introduction
+##A. Loading and processing the data
 
-This is an assignment that models a study of the number of foot steps throughout the day over several days. 
+Current working directory is `r getwd()`.
 
-## Exploratory analysis
-
-A preliminary exploration of the dataset revealed that the data arrives sorted by date and interval, see [sort-check procedure](#checksorted).
-
-An informal count of missing data points showed that only about	1.3%	percent of data that is missing measurements, thus suggesting that bias would be negligible. However, the calculations would be error-prone if ommissions are allowed. 
-
-# Analysis of Data 
-
-See the Supplementary Section for code for [reading the data](#reading)
+###A.1.Load the data (i.e. read.csv())
 
 ```{r}
- t <-  read.table( "activity.csv",  header=TRUE, sep=",",  comment.char = "#",  quote = "\"", stringsAsFactors=FALSE)
+ t <-  read.table( "activity.csv",   header=TRUE, sep=",",  comment.char = "#",  quote = "\"", stringsAsFactors=FALSE)
+```
+
+Prepare environment.
+
+```{r}
+library(lattice)
 ```
 
 
-## Data Cleaning
-The presence of missing-data placeholders, **NA**, could bias the analysis. Another researcher ([Peng](https://class.coursera.org/repdata-015/lecture/59)) suggested that missing data could be filled in by taking an average of steps at the corresponding interval across all days sampled. However, that model could introduce a bias to the comparison of weekdays versus weekends. For example, averaging in weekday steps during lunch would add unjustified steps to a corresponding  interval with a missing measureent on the weenend. Other less-scheduled times of walking could also introduce unjustified measurement estimates.
-
-**Interpolation Model**: This study assumes that walking/running patterns are similar among <b>adjacent</b> 5-minute intervals. As such, this study supplies an estimate of steps at missing points by interpolating a value from the previous and subsequent non-NA intervals on the same day. 
-
-For example, if you take 50 steps in interval i, and you take 40 steps in interval i+2 (on the same day), we assume that you did not come to a stop or suddenly sprint solely in interval i+1. We impute 45 steps in interval i+1 by interpolation of the nearest non-missing points. Similarly, if you took no steps surrounding an interval with missing data, we assume you also took no steps then.
-
-<!-- main data-cleaning function: interpolate values to replace NA steps -->
-```
-opts_chunk$set( echo=FALSE)
-{r setoptions, echo=FALSE}
-```
+###A.2. Process the data for analysis
 
 
-Treat 3 consecutive intervals with an NA as single 15 minute interval
-`r MINOR_GAP  <-  function() { 3 }`
+##B. What is the mean of the daily totals of steps
 
+Note. This chunk is used again in section D.4.
 
-`r cleanData  <-  function(t) {
-  previousValue <- 0L
-  nextValue <- t[[2,1]]
-  nextValue <- if ( is.na(nextValue)) 0L
-  n <- nrow(t)
-  
-# traverse table and fix all NA step values by interpolation to adjacent values 
-  previousValue <- 0L
-
-  for ( i in 1L:(n-1)) {
-    if ( is.na( t[[i,1]] )) { #1
-      t[[i,1]] <-  as.integer( mean( c(previousValue, nextValue)))
-      if ( is.na( t[[i,1]])) {
-         t[[i,1]] <- 0L
-      }
-      
-# setup next nextValue
-      if ( ! is.na(t[[ i+1, 1]]))   {
-        nextValue <- t[[ i+1, 1]] # the easy case.
-                     
-      } else { # infer next step (after present visited ith and next is NA
-       
-        if ( previousValue==0 ) { # no activity across adjacent intervals
-          nextValue <- 0L
-          
-        } else { # find next near non-NA step value and use that
-          nextValue <- 0L
-        
-          # get next non-NA value. assume continued activity thru gap
-          for (j in (i+ MINOR_GAP()):(i+1)) {
-            if ( ! is.na( t[[ j,1]] )) {
-              nextValue <- as.integer( t[[ j,1]] )
-              
-            } else {
-              nextValue <- as.integer( 
-                  nextValue * ( MINOR_GAP() / (MINOR_GAP() +1)) )
-            }
-          }
-        }
-      }
-
-# interpolate present step 
-#  from known previous and inferred next non-NA step value
-      t[[i,1]] <-as.integer( mean(c(previousValue, nextValue)) )
-      
-    } else { 
-      # no processing  of this cell needed: i-th is not NA
-    }
-     
-    # setup new previousValue for the next iteration
-    previousValue <- as.integer( t[[i,1]])
-  }
-  t # return clean data.frame
+```{r}
+dates <- unique( t$date )
+datesWithNoMissingMeasurements <- 
+    unique( t[ ! is.na( t[ t$interval==0,]$steps) & t$interval==0, ]$date )
+totalStepsOnAGivenDay <- integer()
+for (day in datesWithNoMissingMeasurements) {
+     totalStepsOnAGivenDay[day] <- sum( t[  t$date==day, ][, "steps"] , na.rm=TRUE)
 }
+
+meanDailySteps <-  mean( totalStepsOnAGivenDay) 
+```
+
+There are `r length(dates)` days with measurement data after filtering out those with missing step measurements.
+
+The average of the totals of steps per day is `r meanDailySteps` steps, ignoring missing data points. By "ignoring" missing values we mean we tell sum to remove NA values. This has the effect of changing NA values to zero, as determined through trial and error.
+
+
+###B.1. Calculate the daily totals of steps
+
+The total number of steps per day was `r sum( t[ , "steps"] , na.rm=TRUE)` steps, ignoring missing data points.
+
+###B.2. Make a histogram of the total number of steps taken each day
+
+This histogram tells on how many different days were the number of steps
+in a certain range. There are 10 ranges because I set breaks=10, which is an arbitrary choice.
+
+The histogram does not give a number of steps <i>for each day</i>. That interpretation of this requirement conflicts with the capabilities of the R hist() function which does not provide a way to input the x ranges explitly.
+
+The ranges are calculated by the hist function but are not revealed. It kind-of looks like a range of step is about 2000. At the 5000 tic mark generated by hist() we see two and a half vertical bars. The first (left) bar tells us that on 10 difference days there were kind-of like between zero and 2000 steps. The next vertical bar kind-of tells us that on (looks like 2) 2 days, there were between 2000 and 4000 steps. And so on. (just one more: on 3 days we guess about 4000 5o 6000 steps).
+
+
+
+```{r}
+totalStepsOnEachDay <- unname(totalStepsOnAGivenDay)
+hist( totalStepsOnEachDay, breaks=9)
+```
+
+# print("showed hist 1")
 `
 
-The details are provided in the [Supplementary: interpolation of missing data](#interpolate) section.
 
-<!-- analytic functions declarations -->
-`r initActivityData <- function() {
-  t <-  read.table( "activity.csv",  header=TRUE, sep=",",  comment.char = "#",  quote = "\"", stringsAsFactors=FALSE)
-t
+###B.3. Calculate and report the mean and median of the daily totals of steps
+
+Note. This logic is reused in similar form in section D.4.(b).
+
+```{r}
+averageDailySteps <- mean( t[, "steps"] , na.rm=TRUE)
+medianDailySteps <- median( t[, "steps"] , na.rm=TRUE)
+```
+
+The average number of steps per day during all days of the experiment where measurements were present is `r round(averageDailySteps, 5)` steps.
+
+The median number of steps per day during all days of the experiment where measurements were present is `r round(medianDailySteps,1)` steps.
+
+
+##C. What is the average daily activity pattern?
+
+###C.1. Time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+A comparable plot will be generated in section D. So the plotting code is defined as a function.
+
+```{r}
+plotStepsByIntervals <- function( ta) {
+  avgStepsPerInterval <- aggregate(steps ~ interval, ta, mean)
+  plot(avgStepsPerInterval$interval, avgStepsPerInterval$steps, 
+       ylab = "Average number of steps taken", 
+       xlab = "Interval", type = "l")
+  avgStepsPerInterval
 }
 
-t <- initActivityData ()`
+avgStepsPerInterval <- plotStepsByIntervals(t)
+
+```
+
+###C.2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+```{r}
+maxAverageSteps <- avgStepsPerInterval[avgStepsPerInterval$steps == max(avgStepsPerInterval$steps),"interval"]
+intervalWithMaxAverageSteps <- avgStepsPerInterval[avgStepsPerInterval$steps == max(avgStepsPerInterval$steps),]$interval
+```
+
+The 5-minute interval, on average across all the days in the dataset, which contains the maximum number of steps is interval `r intervalWithMaxAverageSteps`-`r intervalWithMaxAverageSteps+5`.
 
 
-`r totalStepsEachDayFunction <- function(t) {
-  daysRows <- t[,"date"]
-  days <- daysRows[!duplicated(daysRows) ]
 
-  stepInDays <- integer()
-  for (day in days) {
-    stepInDays[day] <- sum( t[  t$date==day, ][, "steps"] , na.rm=TRUE)
+##D. Imputing missing values
+
+For experiments that I have been involved with it was unthinkable to fabricate values to "fill in" for missing measurements. The approach I have taken is this: derive two complete copies of the measurement date according to a minimum assumption and a maximum assuption, respectively. So, for example in the minimal set, all null values are changed to the lowest applicable values, such as zero. In the maximal set the nulls are changed to the maximum conceivable value (depending on the nature of the experiment some judgment applies).
+Then run the analysis on both. When you generate summary statistics and plots you can see clearly  the impact as an uncertainty range that is a consequence of the missed measurements. ... and then decide whether it is a problem.
+After the patterns emerge there might be evidence for justifying the estimate of missing measurements by interpolation or some kind from points that are now demonstrated to have a sufficiently strong relationship.
+
+But this assignment has imposed the approach of fabricating estimates that look good and are easy to generate.
+
+###D.1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+
+```{r}
+  missingValuesCount <- length( t$interval) - length( t[ is.na(t$steps) , ]$interval)
+```
+
+The number of intervals without a measurement is `r missingValuesCount`.
+
+###D.2. Devise a strategy for filling in all of the missing values in the dataset.
+
+
+####The simple principle for selecting related measurements is this:
+
+Look at the adjacent days of the same part of the week, and average their interval measurements in the hour surrounding the problem interval.
+
+To clarify further:
+
+The strategy is to find the average value during the corresponding hour across the adjacent days of the same part of the week. The "part of the week" means weekdays or weekends. My justification for considering the parts of week separately is based on the cultural norm in which physical activities are often different on weekdays and weekends. So, estimates for missing measurements should not draw from the other part of the week. My justification for considering the corresponding intervals within a one hour range is that activity might be similar around the approximate same time on adjacent days. My justification for using only the two closest adjacent days is that the estimatation is mostly based on the possible similarity of activity during the same hour. The calculation also assumes that a further averaging across more than the adjacent days will yield no better estimation than that of the adjacent days where activity might possibly be at least as similar to that of the day with missing measurements.
+
+Here are some examples. Given a missing measurement on Saturday at interval `r hour <-13
+width <- 6
+hour*12-1`, which is `r hour-12`pm, we consider intervals `r hour*12-1` minus `r width` thru plus  `r width`  giving intervals `r 13*12-1 -width` thru `r 13*12-1 +width` on that week part (Saturday thru Sunday). Its adjacent day is that Sunday. (If we were looking at a Sunday interval, an adjacent day might be the previous or next weekend date.)  Call this set of values the "related" points for the missing measurement under consideration. If the interval under consideration belongs to Friday, a weekday, its adjacent date is the following Monday.
+
+###D.3. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+A "new" dataset is accomplished by generating the list of days having measurement data and selecting by those dates for computations, rather than creating a separate modified copy of the whole dataset.
+
+Here is a summary of the steps that implement the strategy for fabricating values to replace missing measurements:
+
+1. Generate a list of dates for the weekend and weekday parts of the week
+   Now do the same for each part of the week.
+   
+2. Generate a list of the days that are missing measurements.
+
+3.   For each of these "miss days" generate the two adjacent days that are in the same part of the week and are not themselves "miss days".
+   
+4. For each "miss day" . . .
+
+5.   initialize a window of one hour on the two adjacent days
+     
+6.   for each interval . . .
+
+7.        update the average steps: 
+            the average of the two current one hour windows
+8.        assign that average to the current interval of the current miss day.
+
+
+####NOTE 6.
+
+This algorithm assumes that the only intervals with missing measurement values
+are those on days where all of the measurements are missing.
+This assumption is valid for the given data of this assignment. 
+The assumption allows the algorithm to avoid checking each candidate interval-with-measurement values
+  that might otherwise have contributed to an estimate to fill in missing data.
+
+
+###Here is the implementation. (D.3.)
+
+####1. Generate a list of dates for the weekend and weekday parts of the week
+
+```{r}
+datesAsDate <- as.Date(dates)
+weekdayDatesAsString <- c()
+weekendDatesAsString <- c()
+for (day in dates) {
+    dateAsDate <- as.Date( day)
+    dayofweekLetter <- substring( weekdays(dateAsDate), 1,1)
+    if (dayofweekLetter == "S") { # only Sat and Sun start with S
+      weekendDatesAsString <- c(weekendDatesAsString, day)
+    } else {
+      weekdayDatesAsString <- c(weekdayDatesAsString, day)
+    }
+}
+```
+
+So, incidentally, the experiment was performed on `r length(weekendDatesAsString)` weekend dates and  `r length(weekdayDatesAsString)` weekend dates.
+
+
+####2. Generate a list of the days that are missing measurements.
+
+```{r}
+missdaysWeekend <- c()
+for (day in weekendDatesAsString) {
+  if ( is.na( t[ t$date==day & t$interval==0 , ]$steps)) {
+    missdaysWeekend <- c(missdaysWeekend, day)
+  } else {
+   }
+}
+missdaysWeekday <- c()
+for (day in weekdayDatesAsString) {
+  if ( is.na( t[ t$date==day & t$interval==0 , ]$steps)) {
+    missdaysWeekday <- c(missdaysWeekday, day)
   }
-stepInDays 
-}`
+}
+```
 
-`r meanStepsEachDayFunction <- function(t) {
-  daysRows <- t[,"date"]
-  days <- daysRows[!duplicated(daysRows) ]
-  meanStepsEachDay <- sum( t$steps, na.rm=TRUE) / length(days)
-  meanStepsEachDay
-}`
+There were `r length(missdaysWeekend)` weekend and `r length(missdaysWeekday)` days  missing measurement data, `r length(missdaysWeekend)+ length(missdaysWeekday)` all together.
 
-
-`r totalStepsEachDayHistogram <- function( totalStepsEachDay) { 
-
-  daysRows <- t[,"date"]
-  days <- daysRows[!duplicated(daysRows) ]
-
-  dayNumber <-  1:length( days)
-  hh <-  c( dayNumber, totalStepsEachDay)
-  hist( hh, col="yellow", oma="2", 
-    xlab="Total Steps By Day" , main="Total Steps By Day" )
- abline( v=12, lwd=2)
- axis(side=1, at=seq(0,100, 10), labels=seq(0,1000,100))
- invisible()
-}`
-
-
-
-`r meanOfTotalStepsPerDayfunction <- function( totalStepsEachDay ) {
-  meanMaxSteps <- mean( totalStepsEachDay , na.rm=TRUE)
-meanMaxSteps 
-}`
-
-`r medianOfTotalStepsPerDayfunction <- function( totalStepsEachDay ) {
-  medianMaxSteps <- median( totalStepsEachDay , na.rm=TRUE)
-medianMaxSteps 
-}`
-
-
-
-`r histClean <- function( tClean ) {
-  totalStepsEachDay <- totalStepsEachDayFunction(tClean )
-  totalStepsEachDayHistogram( totalStepsEachDay  )
-  invisible()
-}`
-
-
-
-`r plotMeanStepsByInterval <- function( t) {
+####3. For each of these "miss days" generate the two nearest adjacent days that are in the same part of the week and are not themselves "miss days".
+   
+   
+   # debug:
+   missdayWeekpart <- missdaysWeekend
+   weekpartDayDatesAsString <- weekendDatesAsString
+```{r}
+missdaysAdjacentGenerate <- function( missdayWeekpart, weekpartDayDatesAsString) {
+        # missdaysWeekday, missdaysWeekend.  return: missdaysAdjacent
   
-  meanOfTotalStepsAllIntervals1 <- numeric( 24*12 ) # 24 hours times 12 five-minute intervals per hour
+  missdaysAdjacent <- list()
+  ## names(missdaysAdjacent) <- c("date","adjacentDays")
   
-  for (i in 1: length(meanOfTotalStepsAllIntervals1)) {
-    intervalbaseMinute <-  (i-1)*5
-    meanOfTotalStepsAllIntervals1[i] <- mean( t[ t$interval==intervalbaseMinute ,]$steps , na.rm = TRUE)
-    if ( is.nan(meanOfTotalStepsAllIntervals1[i])) { meanOfTotalStepsAllIntervals1[i] <- 0}
-  }
-  par( mfrow=c(2,1) )
-  par( cex=0.6)
-  par(mar=c(3,3,0,0))
-  plot( c(1:( 24*12)) , meanOfTotalStepsAllIntervals1, type="l" , main="Raw mean steps per interval across all days", col="red")
-  invisible()
-}`
-
-
-`r intervalWithMaxMeanStepsByInterval <- function( t) {
-  
-  meanOfTotalStepsAllIntervals1 <- numeric( 24*12 ) # 24 hours times 12 five-minute intervals per hour
-  intervalWithMax <- 0L
-  
-  for (i in 1: length(meanOfTotalStepsAllIntervals1)) {
-    intervalbaseMinute <-  (i-1)*5
-    m <- mean( t[ t$interval==intervalbaseMinute ,]$steps , na.rm = TRUE)
-    if ( is.nan(m)) { m <- 0L}
-    intervalWithMax <- if( m > intervalWithMax) meanOfTotalStepsAllIntervals1[i]
-  }
-  intervalWithMax
-}`
-
-`r intervalWithMaxMeanStepsByIntervalBYMAXOFARRAY <- function( t) {
-  
-  meanOfTotalStepsAllIntervals1 <- numeric( 24*12 ) # 24 hours times 12 five-minute intervals per hour
-  intervalWithMax <- 0L
-  
-  for (i in 1: length(meanOfTotalStepsAllIntervals1)) {
-    intervalbaseMinute <-  (i-1)*5
-    meanOfTotalStepsAllIntervals1[i] <- max( t[ t$interval==intervalbaseMinute ,]$steps , na.rm = TRUE)
-    if ( is.nan(meanOfTotalStepsAllIntervals1[i])) { meanOfTotalStepsAllIntervals1[i] <- 0L}
-  }
-  intervalWithMax <- max(meanOfTotalStepsAllIntervals1)
-  intervalWithMax
-}`
-
-
-`r maxMeanStepsByInterval <- function( t) {
-  
-  meanOfTotalStepsAllIntervals1 <- numeric( 24*12 ) # 24 hours times 12 five-minute intervals per hour
-  
-  for (i in 1: length(meanOfTotalStepsAllIntervals1)) {
-    intervalbaseMinute <-  (i-1)*5
-    meanOfTotalStepsAllIntervals1[i] <- mean( t[ t$interval==intervalbaseMinute ,]$steps , na.rm = TRUE)
-    if ( is.nan(meanOfTotalStepsAllIntervals1[i])) { meanOfTotalStepsAllIntervals1[i] <- 0}
-  }
-  max <- max( meanOfTotalStepsAllIntervals1)
-  max
-}`
-
-
-`r  totalMissingValues <- function(t) {
-  missingCount <- length( t$steps[ is.na(t$steps)])
-  missingCount
-}`
-
-
-`r tClean <- cleanData(t)
-weekdayWeekendFactor <-  factor( c(1,2), levels=c("Weekdays","Weekends"))`
-
-# for each interval number, get mean of steps in that interval across each day
-`r plotWeekdayVsWeekendPanelFunction <- function( tClean) {
-  tClean$wkt <-  ifelse( strftime( tClean$date, format="%u") %in% c("6","7"), 2, 1)
-  
-  weekdayWeekendFactor <- factor(tClean$wkt, c(1,2), labels=c("WeekDay","WeekEnd"))
-  tCleanWeekday <-  tClean[ tClean$wkt == 1, ]
-  tCleanWeekend <-  tClean[ tClean$wkt == 2, ]
-  tClean$wkt <- weekdayWeekendFactor
+  for (missday in missdayWeekpart ) {
+    # debug: missday <- "2012-11-04"
+    dNext <- c()
+    dPrev <- c()
+     # print( sprintf("missday:%s", missday))
+    for (day in weekpartDayDatesAsString) {
+      #print( sprintf("day:%s", day))
+      # debug: day <- "2012-10-06"
+      if (day != missday) {
+        if (as.Date(day) < as.Date(missday)) {
+      #print( sprintf(" dPrev GOT day:%s", day))
+          dPrev = day
+        }
+        if (length(dNext) == 0) {
+          if (as.Date(day) > as.Date(missday)) {
+      #print( sprintf(" dNext GOT day:%s", day))
+            dNext = day
+          }
+        }
+      }
+    }
     
-  meanOfTotalStepsAllIntervals1 <- numeric( 24*12 ) # 24 hours times 12 five-minute intervals per hour
-  meanOfTotalStepsAllIntervals2 <- numeric( 24*12 )
-                                            
-  for (i in 1: length(meanOfTotalStepsAllIntervals1)) {
-    intervalbaseMinute <-  (i-1)*5
-    meanOfTotalStepsAllIntervals1[i] <- mean( tCleanWeekday[ tCleanWeekday$interval==intervalbaseMinute ,]$steps )
-     if ( is.nan(meanOfTotalStepsAllIntervals1[i])) { meanOfTotalStepsAllIntervals1[i] <- 0}
-    meanOfTotalStepsAllIntervals2[i] <- mean( tCleanWeekend[ tCleanWeekend$interval==intervalbaseMinute ,]$steps )
-     if ( is.nan(meanOfTotalStepsAllIntervals2[i])) { meanOfTotalStepsAllIntervals2[i] <-0}
+    if (length(dNext)==0 | length(dPrev)==0) { # then assign first available
+       for (day in weekpartDayDatesAsString) {
+          if (day != missday   ) { # don't consider already used
+            if (length(dNext)==0   && day != dPrev) {
+              dNext <- day
+            } else if (length(dPrev)==0  && day != dNext) {
+              dPrev <- day
+            }
+          }
+       }
+    }
+    
+    
+     missdaysAdjacent[[missday]] <- c(dPrev, dNext)
+    ## missdaysAdjacent[missday] <- paste(dPrev, dNext)
   }
-  
-  par( mfrow=c(2,1) )
-  par( cex=0.6)
-  par(mar=c(3,3,0,0))
-  plot( c(1:( 24*12)) , meanOfTotalStepsAllIntervals1, type="l" , main="Weekdays", col="blue") # xLim=c(100:288))
-  plot( c(1:( 24*12)) , meanOfTotalStepsAllIntervals2, type="l" , main="Weekends", col="purple") # xLim=c(100:288))
+  missdaysAdjacent
+}
+```
+
+
+```{r}
+####4. For each "miss day" of both parts of the week . . .
+
+
+missdaysAdjacentDaysWeekend <-
+    missdaysAdjacentGenerate( missdaysWeekend, weekendDatesAsString)
+
+missdaysAdjacentDaysWeekday <-
+    missdaysAdjacentGenerate( missdaysWeekday, weekdayDatesAsString)
+```
+
+missdaysAdjacentDaysWeekend and missdaysAdjacentDaysWeekday are now list structures keyed by date and having a string value which is the previousAdjacentDate, space, nextAdjacentDate.
+This string format was decided because I couldn't find a way to accumulate
+two-valued keyed tuples.
+
+
+Modify the dataset, t, with estimated number of steps for missing interval data
+
+
+# convert pure minutes, used for time arithmetic, to the data.frame's interval representation
+# e.g. data.frame has "100" for 1 hour. 105 for 65 minutes.
+# in order to generate the data.frame representation of a one hour set of intervals
+# around the target interval, first convert to pure minutes, do the arithmetic, then backto data.frame's representation
+```{r}
+pureMinuteToHourMinute<- function( minuteInterval) {
+    hour <- as.integer( minuteInterval / 60) 
+    minute <- as.integer( minuteInterval - hour * 60 ) 
+    hourminute <-  as.integer( 100*hour + minute )
+  hourminute 
+}
+
+
+# convert the time representation of the data.frame to pure minutes
+hourMinuteToPureMinute <- function( hourminute) {
+    hourRepresentation <- as.integer( hourminute / 100)
+    minute <-  as.integer( hourminute - hourRepresentation*100 )
+    intervalMinute <-  hourRepresentation * 60 + minute
+  intervalMinute
+}
+```
+    # debug
+    # t no change
+    # missdaysWeekend <- missdayWeekpart
+    # missdaysAdjacentDays <- missdaysAdjacentDaysWeekend
+    
+```{r}
+applyMeanOfAdjacentDaysSameHour <-                     # no return value
+    function(  missdayWeekpart, missdaysAdjacentDays) {
+   # function( t, missdayWeekpart, missdaysAdjacentDays) {
+      # t - the original dataset
+      # missdayWeekpart - list of either weekend or weekday dates
+      # missdaysAdjacentDays - list: key: date, value: vector of prev and next dates.
+      
+     # print("STARTING #####################")
+    # print("STARTING #####################")
+#tt2 <-  t[ t$date=="2012-11-04"  & t$interval==60, ] 
+ #         print( sprintf("tt2:%s", tt2 ))
+  #        print( sprintf("tt2$steps:%s", tt2$steps ))
+   #       print( sprintf("t[ t$date==\"2012-11-04\"  & t$interval==60, ]$steps:%s", t[ t$date=="2012-11-04"  & t$interval==60, ]$steps ))
+          
+      
+    for ( missday in missdayWeekpart) {
+      
+      # debug: missdaysAdjacentDays[missday]
+
+        vectorOfNextPrev  <- unname( unlist( missdaysAdjacentDays[missday]))
+        missdaysAdjacentDatePrev <- vectorOfNextPrev[1]
+        missdaysAdjacentDateNext <- vectorOfNextPrev[2]
+
+ #print( sprintf("missdaysAdjacentDatePrev:%s", missdaysAdjacentDatePrev))
+ #print( sprintf("missdaysAdjacentDateNext:%s", missdaysAdjacentDateNext))
+
+# 5. initialize a window of one hour
+        hourWindow <- -6:5 # twelve 5-minute intervals around a given interval-missing-measurement na.rm
+
+        
+# 6. for each interval . . .
+      # hourMinuteIntervalRepresentations <- seq( 0, hourMinuteToPureMinute(2355),5)
+      
+        hourMinuteIntervalRepresentations <- lapply( seq( 0, hourMinuteToPureMinute(2355),5), pureMinuteToHourMinute )
+       
+        for (interval in  hourMinuteIntervalRepresentations) {
+          
+          s <- 0 # sum for calculating mean of related intervals
+          numberOfRelatedIntervalsAveragedIn <- 0 # n for mean of related intervals
+          
+          
+          for ( hourWindowIntervalMinuteOffset in hourWindow) {
+            relatedInterval <- pureMinuteToHourMinute (
+              hourMinuteToPureMinute ( interval)+ hourMinuteToPureMinute ( 5* hourWindowIntervalMinuteOffset)
+            )
+            
+            if (-1 < relatedInterval
+                && relatedInterval < (2355)) { # keep hour in same day
+              
+  #             print( sprintf("relatedInterval: %s,  missdaysAdjacentDatePrev:%s", relatedInterval, missdaysAdjacentDatePrev))
+              
+              ############# TODO: put this section in a loop over the Prev and Next dates
+              adjacentDateRelatedIntervalStepsValue <-
+                      t[ t$date==missdaysAdjacentDatePrev & t$interval==relatedInterval, ]$steps
+
+                 #            print( sprintf("adjacentDateRelatedIntervalStepsValue: %s", adjacentDateRelatedIntervalStepsValue))
+              if ( length(adjacentDateRelatedIntervalStepsValue) > 0) {
+                  # & !is.na( adjacentDateRelatedIntervalStepsValue) TODO
+                  # & adjacentDateRelatedIntervalStepsValue != 0) {
+
+#note 6
+                  s <- s + adjacentDateRelatedIntervalStepsValue
+                  numberOfRelatedIntervalsAveragedIn <- 
+                      numberOfRelatedIntervalsAveragedIn + 1
+# print( sprintf("s:%s,numberOfRelatedIntervalsAveragedIn:%s ", s, numberOfRelatedIntervalsAveragedIn))
+              }
+            }
+          }
+          
+#7.update the average steps:
+          # mean of up to 12 interval's steps from Adjacent missdays in same weekpart
+          if (numberOfRelatedIntervalsAveragedIn != 0) {
+       #     m <- 1200*s / numberOfRelatedIntervalsAveragedIn
+            m <- s / numberOfRelatedIntervalsAveragedIn  #REINSTATED
+           # print( sprintf("m 1 :%s ", m))
+          } else {
+            # print( sprintf("m 2 :%s ZERO", m))
+            m <- 0
+          }
+#8. assign that average to the current interval of the current miss day.
+        #  print( sprintf("missday:%s, interval:%s", missday, interval))
+      
+         tt <-  t[ t$date==missday  & t$interval==interval, ] 
+         # print( sprintf("tt1:%s", tt ))
+             tt$steps <- m
+        #WAS  measurementVector <- t[  t[ t$date == missday, ]$interval==interval, ]
+          
+          
+          
+       #   print( sprintf("measurementVector:%s", measurementVector ))
+       #    print( sprintf("measurementVector$date:%s", measurementVector$date ))
+        #  print( sprintf("measurementVector$interval:%s", measurementVector$interval ))
+        #  print( sprintf("measurementVector$steps:%s", measurementVector$steps ))
+ 
+        #  print( sprintf("t[  t[ t$date == missday, ]$interval==interval, ]$steps:%s",  t[  t[ t$date == missday, ]$interval==interval, ]$steps))
+         
+          
+         # t[ t$date == missday & t$interval==interval, ]$steps <-  m
+        }
+    }
   invisible()
 }
+```
+
+Apply the fabricated values to the intervals missing measurements.
+
+```{r}
+applyMeanOfAdjacentDaysSameHour(  missdaysWeekend, missdaysAdjacentDaysWeekend)
+applyMeanOfAdjacentDaysSameHour(  missdaysWeekday, missdaysAdjacentDaysWeekday)
+```
+
+####Here is a summary of effort to fabricate data in place of missing measurements:
+
+1. countFabricatedValues: r countFabricatedValues
+4. count of missing measurements for which no value could be fabricated: r countFabricatedValuesUnable, substituted zero.
+2. countFabricatedValuesOfWeekday: r countFabricatedValuesOfWeekday
+3. countFabricatedValuesOfWeekend: r countFabricatedValuesOfWeekend
+
+Total of weekday and weekend fabricated values: r countFabricatedValuesOfWeekday + countFabricatedValuesOfWeekend, should equal countFabricatedValues: r countFabricatedValues.
+
+
+
+
+###D.4.(a) Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day.
+
+This logic is the same as in B.2. but now there are no days with missing measurements in t. <i> It is repeated here instead of using a function becuase of the convenience of getting the totalStepsOnAGivenDay in the current scope.</i>
+
+```{r}
+dates <- unique( t[ ! is.na( t[ t$interval==0,]$steps) & t$interval==0, ]$date)
+totalStepsOnAGivenDay <- integer()
+for (day in dates) {
+     totalStepsOnAGivenDay[day] <- sum( t[  t$date==day, ][, "steps"] , na.rm=TRUE)
+}
+
+meanDailySteps <-  mean( totalStepsOnAGivenDay) 
+```
+
+There are now `r length(dates)` days with measured and estimated step data.
+
+```{r}
+totalStepsOnEachDay <- unname(totalStepsOnAGivenDay)
+hist( totalStepsOnEachDay, breaks=9)
+```
+
+# print("showed hist 2")
 `
-<!-- ------------------------------------------------
-1. Load the data  
-2. Process/transform the data  -->
-## Procedure
 
-To run this script, set working directory to the location of your local copy of activity.csv . Obtain a copy of [activity.csv](#activity.csv) from the assignment repository.
+###D.4.(b) Calculate and report the mean and median total number of steps taken per day. 
+Note. this logic is similar to that in B.3 but expects no missing measurements.
 
-<!-- Loading and preprocessing the data -->
-The method of loading and processing data are shown in the  [Data Cleaning section](#supp).
-<!-- 1. Load the data -->
-`r t <- initActivityData()`
-
-
-<!-- What is mean total number of steps taken per day? -->
-### Mean total number of steps taken per day
-
-<!-- For this part of the assignment, you can ignore the missing values in the dataset 
--->
-This section explores the raw data. The raw data includes missing points where data was scheduled to be measured and failed to be captured.
-
-The method of loading and processing data are shown in the  [Data Cleaning section](#supp).
-
-<!--  1. Calculate the total number of steps taken per day-->
-
-The total number of steps observed per day is  `r  totalStepsEachDay<-totalStepsEachDayFunction(t)
-totalStepsEachDay`.
-
-
-<!-- 2. If you do not understand the difference between a histogram and a barplot, research the difference between them. Make a histogram of the total number of steps taken each day -->
-###Following is an exploratory histogram of the total number of steps observed by day.
-
-
-```{r, echo=FALSE, eval=TRUE}
-histClean( t)
-```
-
-
-
-<!--3. Calculate and report the mean and median of the total number of steps taken per day -->
-The  mean total number of steps observed per day is `r meanOfTotalStepsPerDayfunction (  totalStepsEachDay )`,  ignoring  the missing values in the dataset.
- Median is `r medianOfTotalStepsPerDayfunction (  totalStepsEachDay )`
-
-
-<!-- 
-What is the average daily activity pattern?
--->
-## Average daily activity pattern
-<!-- 1. Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis) -->
-This is  a time series of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis).
-```{R}
-plotMeanStepsByInterval(t)
-```
-
-
-<!-- 2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps -->
-The greatest number of average steps in an interval (averaged across all days) is on interval , which is day 2, hour `r floor( ((5*806) -2*(60*24)) / 60)`, or interval number `r intervalWithMaxMeanStepsByIntervalBYMAXOFARRAY(t)` in the total dataset.
-The greatest number of average steps is `r maxMeanStepsByInterval(t)`. 
-
-An initial attempt to compute this maximum was implemented by the following code, which does not work. The lesson learned is that the base "R" language does not seem to provide a way to write a test expression (e.g. if statement conditional clause) to ask whether a variable contains NULL. The statement errors out just by attempting to refer to that variable. It also worth noting that the mean function returns a troublesome non-value if all of the elements it see are NA (rather than something useful such as NaN).
 ```{r}
-intervalWithMaxMeanStepsByInterval
+averageDailyStepsWithEstimates <- mean( t[, "steps"] , na.rm=TRUE)
+medianDailyStepsWithEstimates <- median( t[, "steps"] , na.rm=TRUE)
 ```
 
+The average number of steps per day during all days of the experiment is `r round(averageDailySteps, 5)` steps.
+
+The median number of steps per day during all days of the experiment is `r medianDailySteps` steps.
 
 
-<!-- Imputing missing values -->
-## Imputing missing values
 
-This section explores the raw data. The raw data includes missing points where data was scheduled to be measured and failed to be captured.
+###D.4.(c) Do these values differ from the estimates from the first part of the assignment?
 
-<!-- 1.Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs) -->
-1.  The total number of missing values in the dataset (i.e. the total number of rows with NAs) is`r totalMissingValues(t)`.
-
-  
-<!-- 2.Devise a [strategy](#interpolate) for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc. -->
-2. The strategy for filling in missing values (aka data smoothing) is to interpolate between the nearest non-missing values, as has already been described.
-
-<!-- 3.Create a new dataset that is equal to the original dataset but with the missing data filled in.-->
-3. The new dataset contains no NA values.
-`r  tClean <- cleanData(t)`
-
-<!-- 4.Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. --> 
-4. The following is based on the revised activity data set.
-#### Here is a histogram of the total number of steps each day.
-
-```{r, echo=FALSE, eval=TRUE}
-histClean( tClean)
-```
-
-It was discovered that all or nearly all blocks of time where NA is present (measurements missed) are preceeded and succeeded by zero steps. As a result of the interpolation strategy, which is based on interpolating the surrounding non-NA values, all these NA points are converted to zero steps.
+The average number of steps including estimated counts is `r round(averageDailyStepsWithEstimates, 5)` steps.
+The average daily steps with and without estimates differ by `r averageDailyStepsWithEstimates - averageDailySteps`
 
 
-<!-- Are there differences in activity patterns between weekdays and weekends -->
-## Differences in activity patterns between weekdays and weekends
+The median steps including estimated counts is `r round(medianDailyStepsWithEstimates, 1)` steps.
+The median daily steps with and without estimates differ by `r medianDailyStepsWithEstimates - medianDailyStepsWithEstimates`
 
 
-<!-- 1.Create a new factor variable -->
-### New Factor variable
-  To generate two plots, a factor variable is added to the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day. The factor is defined as
-```{r}weekdayWeekendFactor <-  factor( c(1,2), levels=c("Weekdays","Weekends"))
-```
 
-<!--2.Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data
--->
-### Panel plot comparing weekday and weekend step patterns.
+###D.4.(d) What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+The use of averages to estimate values for missing measurements had no significant effect.
+This is considered good. If the fabricated data had pushed the overall mean significantly, it would call into question any inferences that might otherwise be made.
+
+
+
+##E. Are there differences in activity patterns between weekdays and weekends?
+
+
+###E.1. Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+
 ```{r}
-plotWeekdayVsWeekendPanelFunction(tClean)
+t$weekpart <- as.factor( ifelse( t$date %in% weekdayDatesAsString, yes="weekend", no="weekday"))
 ```
 
-# Results
-In a real research paper a Results section would interpret the results.
 
-# Discussion
-In a real research paper, additional ideas, implications, relationship to other work, and future work would be discussed here. 
-I believe the problem of computing datasets with missing values that I encountered here will be a problem with many datasets in these courses and in the real world. As such, a solution must be found. The use of a mean across days, as suggested in the assignment instructions, would only obfuscate the underlying issues around blocks of missing data points.
+###E.2. Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.
 
-# Conclusion
-In a real research paper, this section would recap the paper.
-
-# Supplementary Materials / gory details 
-[#supp]
-### reading data [#reading]
 ```{r}
-initActivityData
-```
+avgStepsPerIntervalsOfWeekparts <- aggregate(steps ~ weekpart + interval, t, mean)
 
-## Data-Cleaning Strategy
-
-### Interpolation of missing data points.[#interpolate] 
-
-The interpolation algorithm takes two parameters.
-1. activity data.frame
-2. MINOR_GAP =  `r MINOR_GAP()`, which the number of 5-minute intervals with NA that we consider "minor" for interpolation purposes. The interpolation will look ahead up to MINOR_GAP number of consecutive intervals with missing step values.
-
-The interpolation function is: <!-- just list the code of cleanData here -->
-
-```{r, echo=TRUE, eval=TRUE}
-cleanData  <-  function(t) {
-  previousValue <- 0L
-  nextValue <- t[[2,1]]
-  nextValue <- if ( is.na(nextValue)) 0L
-  n <- nrow(t)
-  
-# traverse table and fix all NA step values by interpolation to adjacent values 
-  previousValue <- 0L
-
-  for ( i in 1L:(n-1)) {
-    if ( is.na( t[[i,1]] )) { #1
-      t[[i,1]] <-  as.integer( mean( c(previousValue, nextValue)))
-      if ( is.na( t[[i,1]])) {
-         t[[i,1]] <- 0L
-      }
-      
-# setup next nextValue
-      if ( ! is.na(t[[ i+1, 1]]))   {
-        nextValue <- t[[ i+1, 1]] # the easy case.
-                     
-      } else { # infer next step (after present visited ith and next is NA
-       
-        if ( previousValue==0 ) { # no activity across adjacent intervals
-          nextValue <- 0L
-          
-        } else { # find next near non-NA step value and use that
-          nextValue <- 0L
-        
-          # get next non-NA value. assume continued activity thru gap
-          for (j in (i+ MINOR_GAP()):(i+1)) {
-            if ( ! is.na( t[[ j,1]] )) {
-              nextValue <- as.integer( t[[ j,1]] )
-              
-            } else {
-              nextValue <- as.integer( 
-                  nextValue * ( MINOR_GAP() / (MINOR_GAP() +1)) )
-            }
-          }
-        }
-      }
-
-# interpolate present step 
-#  from known previous and inferred next non-NA step value
-      t[[i,1]] <-as.integer( mean(c(previousValue, nextValue)) )
-      
-    } else { 
-      # no processing  of this cell needed: i-th is not NA
-    }
-     
-    # setup new previousValue for the next iteration
-    previousValue <- as.integer( t[[i,1]])
-  }
-  t # return clean data.frame
-}
-```
-### average number of steps taken 
-**meanStepsPerDay** is
-```{r, echo=TRUE, eval=TRUE}
-
-meanStepsEachDayFunction(t)
-```
-
-## Exploratory Manual activity performed [#checksorted]
-Scanned the activity data file to confirm that (1) steps column contains NA values, and (2) date and interval contain valid (non-NA) values.
-
-
-```{r, echo=TRUE, eval=FALSE}
-## Manual Check of input already sorted
-
-# check that t is sorted by date, interval ...
-s <- t[ order(t[,2], t[,3]), ]
- t[[1,1]] <- 55L
-t.vec <- apply(t, 1, paste, collapse = "")
-s.vec <- apply(s, 1, paste, collapse = "")
-t.without.s.rows <- t[!t.vec %in% s.vec,]
-
-# now you can also verify that this method of difference-finding works:
- t.vec[3] <-  505L
-> head(t.without.s.rows)
-[1] steps    date     interval
-<0 rows> (or 0-length row.names)
-> 
-> t.without.s.rows <- t[!t.vec %in% s.vec,]
-> head(t.without.s.rows)
-  steps       date interval
-3     0 2012-10-01       10
-> head(t.vec)
-[1] "   552012-10-01  ...
-  
+xyplot(steps ~ interval | weekpart, data = avgStepsPerIntervalsOfWeekparts,layout=c(2, 1), type = "l")
 ```
 
 
-# All code used to generate analysis in this paper
-```{r echo=TRUE, eval=FALSE}
- Sys.setlocale("LC_ALL", "C")
-
- cleanData  <-  function(t) {
-  previousValue <- 0L
-  nextValue <- t[[2,1]]
-  nextValue <- if ( is.na(nextValue)) 0L
-  n <- nrow(t)
-  
-# traverse table and fix all NA step values by interpolation to adjacent values 
-  previousValue <- 0L
-
-  for ( i in 1L:(n-1)) {
-    if ( is.na( t[[i,1]] )) { #1
-      t[[i,1]] <-  as.integer( mean( c(previousValue, nextValue)))
-      if ( is.na( t[[i,1]])) {
-         t[[i,1]] <- 0L
-      }
-      
-# setup next nextValue
-      if ( ! is.na(t[[ i+1, 1]]))   {
-        nextValue <- t[[ i+1, 1]] # the easy case.
-                     
-      } else { # infer next step (after present visited ith and next is NA
-       
-        if ( previousValue==0 ) { # no activity across adjacent intervals
-          nextValue <- 0L
-          
-        } else { # find next near non-NA step value and use that
-          nextValue <- 0L
-        
-          # get next non-NA value. assume continued activity thru gap
-          for (j in (i+ MINOR_GAP()):(i+1)) {
-            if ( ! is.na( t[[ j,1]] )) {
-              nextValue <- as.integer( t[[ j,1]] )
-              
-            } else {
-              nextValue <- as.integer( 
-                  nextValue * ( MINOR_GAP() / (MINOR_GAP() +1)) )
-            }
-          }
-        }
-      }
-
-# interpolate present step 
-#  from known previous and inferred next non-NA step value
-      t[[i,1]] <-as.integer( mean(c(previousValue, nextValue)) )
-      
-    } else { 
-      # no processing  of this cell needed: i-th is not NA
-    }
-     
-    # setup new previousValue for the next iteration
-    previousValue <- as.integer( t[[i,1]])
-  }
-  t # return clean data.frame
-}
-
-
-The details are provided in the [Supplementary: interpolation of missing data](#interpolate) section.
-
-<!-- analytic functions declarations -->
- initActivityData <- function() {
-  t <-  read.table( "activity.csv",  header=TRUE, sep=",",  comment.char = "#",  quote = "\"", stringsAsFactors=FALSE)
-t
-}
-
-t <- initActivityData ()
-
-
- totalStepsEachDayFunction <- function(t) {
-  daysRows <- t[,"date"]
-  days <- daysRows[!duplicated(daysRows) ]
-
-  stepInDays <- integer()
-  for (day in days) {
-    stepInDays[day] <- sum( t[  t$date==day, ][, "steps"] , na.rm=TRUE)
-  }
-stepInDays 
-}
-
- meanStepsEachDayFunction <- function(t) {
-  daysRows <- t[,"date"]
-  days <- daysRows[!duplicated(daysRows) ]
-  meanStepsEachDay <- sum( t$steps, na.rm=TRUE) / length(days)
-  meanStepsEachDay
-}
-
-
- totalStepsEachDayHistogram <- function( totalStepsEachDay) { 
-
-  daysRows <- t[,"date"]
-  days <- daysRows[!duplicated(daysRows) ]
-
-  dayNumber <-  1:length( days)
-#TODO: x is dayNumber
-
-  hist( totalStepsEachDay, col="yellow", oma="2", 
-  xlab="Total Steps By Day" , main="Total Steps By Day" )
- abline( v=12, lwd=2)
- axis(side=1, at=seq(0,100, 10), labels=seq(0,1000,100))
- invisible()
-}
-
-
-
- meanOfTotalStepsPerDayfunction <- function( totalStepsEachDay ) {
-  meanMaxSteps <- mean( totalStepsEachDay , na.rm=TRUE)
-meanMaxSteps 
-}
-
- medianOfTotalStepsPerDayfunction <- function( totalStepsEachDay ) {
-  medianMaxSteps <- median( totalStepsEachDay , na.rm=TRUE)
-medianMaxSteps 
-}
-
-
-
- histClean <- function( tClean ) { # plot
-  totalStepsEachDay <- totalStepsEachDayFunction(tClean )
-  totalStepsEachDayHistogram( totalStepsEachDay  )
- #  invisible()
-}
-
-
-
- plotMeanStepsByInterval <- function( t) {
-  
-  meanOfTotalStepsAllIntervals1 <- numeric( 24*12 ) # 24 hours times 12 five-minute intervals per hour
-  
-  for (i in 1: length(meanOfTotalStepsAllIntervals1)) {
-    intervalbaseMinute <-  (i-1)*5
-    meanOfTotalStepsAllIntervals1[i] <- mean( t[ t$interval==intervalbaseMinute ,]$steps , na.rm = TRUE)
-    if ( is.nan(meanOfTotalStepsAllIntervals1[i])) { meanOfTotalStepsAllIntervals1[i] <- 0}
-  }
-  par( mfrow=c(2,1) )
-  par( cex=0.6)
-  par(mar=c(3,3,0,0))
-  plot( c(1:( 24*12)) , meanOfTotalStepsAllIntervals1, type="l" , main="Raw mean steps per interval across all days", col="red")
-  invisible()
-}
-
-
- intervalWithMaxMeanStepsByInterval <- function( t) {
-  
-  meanOfTotalStepsAllIntervals1 <- numeric( 24*12 ) # 24 hours times 12 five-minute intervals per hour
-  intervalWithMax <- 0L
-  
-  for (i in 1: length(meanOfTotalStepsAllIntervals1)) {
-    intervalbaseMinute <-  (i-1)*5
-    m <- mean( t[ t$interval==intervalbaseMinute ,]$steps , na.rm = TRUE)
-    if ( is.nan(m)) { m <- 0L}
-    intervalWithMax <- if( m > intervalWithMax) meanOfTotalStepsAllIntervals1[i]
-  }
-  intervalWithMax
-}
-
- intervalWithMaxMeanStepsByIntervalBYMAXOFARRAY <- function( t) {
-  
-  meanOfTotalStepsAllIntervals1 <- numeric( 24*12 ) # 24 hours times 12 five-minute intervals per hour
-  intervalWithMax <- 0L
-  
-  for (i in 1: length(meanOfTotalStepsAllIntervals1)) {
-    intervalbaseMinute <-  (i-1)*5
-    meanOfTotalStepsAllIntervals1[i] <- max( t[ t$interval==intervalbaseMinute ,]$steps , na.rm = TRUE)
-    if ( is.nan(meanOfTotalStepsAllIntervals1[i])) { meanOfTotalStepsAllIntervals1[i] <- 0L}
-  }
-  intervalWithMax <- max(meanOfTotalStepsAllIntervals1)
-  intervalWithMax
-}
-
-
- maxMeanStepsByInterval <- function( t) {
-  
-  meanOfTotalStepsAllIntervals1 <- numeric( 24*12 ) # 24 hours times 12 five-minute intervals per hour
-  
-  for (i in 1: length(meanOfTotalStepsAllIntervals1)) {
-    intervalbaseMinute <-  (i-1)*5
-    meanOfTotalStepsAllIntervals1[i] <- mean( t[ t$interval==intervalbaseMinute ,]$steps , na.rm = TRUE)
-    if ( is.nan(meanOfTotalStepsAllIntervals1[i])) { meanOfTotalStepsAllIntervals1[i] <- 0}
-  }
-  max <- max( meanOfTotalStepsAllIntervals1)
-  max
-}
-
-
-  totalMissingValues <- function(t) {
-  missingCount <- length( t$steps[ is.na(t$steps)])
-  missingCount
-}
-
-
- tClean <- cleanData(t)
-weekdayWeekendFactor <-  factor( c(1,2), levels=c("Weekdays","Weekends"))
-
-# for each interval number, get mean of steps in that interval across each day
- plotWeekdayVsWeekendPanelFunction <- function( tClean) {
-  tClean$wkt <-  ifelse( strftime( tClean$date, format="%u") %in% c("6","7"), 2, 1)
-  
-  weekdayWeekendFactor <- factor(tClean$wkt, c(1,2), labels=c("WeekDay","WeekEnd"))
-  tCleanWeekday <-  tClean[ tClean$wkt == 1, ]
-  tCleanWeekend <-  tClean[ tClean$wkt == 2, ]
-  tClean$wkt <- weekdayWeekendFactor
-    
-  meanOfTotalStepsAllIntervals1 <- numeric( 24*12 ) # 24 hours times 12 five-minute intervals per hour
-  meanOfTotalStepsAllIntervals2 <- numeric( 24*12 )
-                                            
-  for (i in 1: length(meanOfTotalStepsAllIntervals1)) {
-    intervalbaseMinute <-  (i-1)*5
-    meanOfTotalStepsAllIntervals1[i] <- mean( tCleanWeekday[ tCleanWeekday$interval==intervalbaseMinute ,]$steps )
-     if ( is.nan(meanOfTotalStepsAllIntervals1[i])) { meanOfTotalStepsAllIntervals1[i] <- 0}
-    meanOfTotalStepsAllIntervals2[i] <- mean( tCleanWeekend[ tCleanWeekend$interval==intervalbaseMinute ,]$steps )
-     if ( is.nan(meanOfTotalStepsAllIntervals2[i])) { meanOfTotalStepsAllIntervals2[i] <-0}
-  }
-  
-  par( mfrow=c(2,1) )
-  par( cex=0.6)
-  par(mar=c(3,3,0,0))
-  plot( c(1:( 24*12)) , meanOfTotalStepsAllIntervals1, type="l" , main="Weekdays", col="blue") # xLim=c(100:288))
-  plot( c(1:( 24*12)) , meanOfTotalStepsAllIntervals2, type="l" , main="Weekends", col="purple") # xLim=c(100:288))
-  invisible()
-}
-
-
-  totalStepsEachDay<-totalStepsEachDayFunction(t)
-totalStepsEachDay
-
- meanOfTotalStepsPerDayfunction (  totalStepsEachDay )
-
- medianOfTotalStepsPerDayfunction (  totalStepsEachDay )
-
- floor( ((5*806) -2*(60*24)) / 60)
-
- intervalWithMaxMeanStepsByIntervalBYMAXOFARRAY(t)
-
- maxMeanStepsByInterval(t)
- totalMissingValues(t)
-  tClean <- cleanData(t)
-
- MINOR_GAP()
-
-
-
-
- t <- initActivityData()
-
-
-```
-
-## Configuration Control
-
-<!-- Configuration Control -->
-### Computer architecture, Operating System
-Windows edition
-- Windows 8.1
-system
-- Processor: AMD A8-4500M APU with Radeon(tm) HD Graphics 1.90GHz
-- Installed memory (RAM): 4.00 GB (3.47 GB usable)
-- System type: 64-bit Operating System, x64-based processor
-- Pen and Touch: No Pen or Touch Input is available for this Display
-Computer name, domain, and workgroup settings
-- Computer name: proprietary
-- Computer description: (blank)
-- Workgroup: WORKGROUP
-Windows activation
-- Windows is activated
-- Product ID: 00179-60350-77560-AAOEM
-Disk drives
-- Hitachi HTS547564A9E384 SATA Disk
-Filesystem
-- System type: NTFS
-- Settings: Allow indexing by contents
-
-
-<!-- Configuration Control -->
-### Software toolchain
-
-Relavent tools (details follow).
-- R, RStudio, 7-Zip, Notepad++, Git Bash, Git Gui, 
-
-R
-- version 3.2.0 for Windows 64-bit
-- http://cran.r-project.org/bin/windows/base/
-
-RSTudio
-- http://www.rstudio.com/
-Listing 1. R version and packages
-```{r, echo=TRUE, eval=FALSE}
-> sessionInfo()
-R version 3.2.0 (2015-04-16)
-Platform: x86_64-w64-mingw32/x64 (64-bit)
-Running under: Windows 8 x64 (build 9200)
-
-locale:
-[1] LC_COLLATE=English_United States.1252 
-[2] LC_CTYPE=English_United States.1252   
-[3] LC_MONETARY=English_United States.1252
-[4] LC_NUMERIC=C                          
-[5] LC_TIME=English_United States.1252    
-
-attached base packages:
-[1] stats     graphics  grDevices utils     datasets 
-[6] methods   base     
-
-loaded via a namespace (and not attached):
-[1] tools_3.2.0
-> 
-
-```
-
-
-7-Zip
-- version 9.20
-- author: Igor Pavlov
-- http://www.7-zip.org/
-
-Notepad++ 
-- v6.6.9, Author: Notepad++ team
-- https://notepad-plus-plus.org/
-
-Git Bash
-- version Git-1.9.5-preview20150319
-- https://msysgit.github.io/
-
-Git Gui
-- author: Shawn Pearce, et al.
-- git-gui version 0.49.DITGUI
-- git version 1.9.5.msysgit.1
-- Tcl/Tk version 8.5.13
-- https://git-scm.com/downloads/guis
-
-**Additional tools** that may be used in the Exploratory phase
-
-Excel spreadsheet
-- Microsoft Office 365
-
-Cygwin
-- https://www.cygwin.com/
-- base-files version 4.2-3
-- version file:
- DISTVERSION "4.1"
- BUILDVERSION 9
- DEFAULT_COMPAT_LEVEL 41
- SCCSVERSION "@(#)Bash version 4.1.17(9) release GNU"
-
-perl
-- perl5.14 
-
-
-
-
-<!-- Configuration Control -->
-### Software infrastructure
-
-R Packages installed during this research
-
-Internet browsers
-- Google Chrome, version 43.0.2357.81.m
-- Internet Exaplorer, version 11.0.9600.17801
-
-
-<!-- Configuration Control -->
-### External dependencies, version IDs
-
-**data** for analysis. [#activity.csv]
-  activity.csv [https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip)
-  link found in:
-    https://class.coursera.org/repdata-015/human_grading/view/courses/973516/assessments/3/submissions
-**GitHub** for submission.
-  https://github.com/rdpeng/RepData_PeerAssessment1
-  
-
-##### Missing data points
-The sample measurements include some points with missing data. This could bias the results.
-We take this into account in our analysis.
-The total number of missing values in the sample is `print("MISSING NA")`
-In order to compensate for missing data points we devised a simple procedure. It is based on the idea that the person's activity level changes more-or-less gradually, so the number of steps in one interval will be similar to that in adjacent intervals, on average.
-This histogram appears to support this assumption.
-
-##### Data-Cleaning Procedure
-
-Each place-holder for missing data is replaced by interpolating the nearby non-missing points. This intermediate data is not stored.
