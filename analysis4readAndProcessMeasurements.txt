@@ -1,0 +1,44 @@
+	# nFeaturesPlusSubjectCount is the number of features=columns in the dataset
+	## plus 1 to reserve a column for the Subject identifier
+
+
+#path <- testPath
+#XTrainOrTestLineCount <- XtestLineCount
+#TrainOrTestSubjectsRead <- testSubjectsRead
+#TestOrTrainActivityRead <- testActivityRead
+
+
+
+readAndProcessMeasurements <- 
+	function( path, nFeaturesPlusSubjectCount, XTrainOrTestLineCount , TrainOrTestSubjectsRead , TestOrTrainActivityRead ) {
+
+  matTrainOrTest <- matrix( nrow= XTrainOrTestLineCount , ncol=nFeaturesPlusSubjectCount)
+  
+  # read and convert TrainOrTesting data into a matrix
+  
+  TrainOrTestLines <-  readLines( path)
+  
+  for ( i in  1:length(TrainOrTestLines)) {
+    
+    # remove multiple adjacent whitespace between values
+    lineSingleDelims <- gsub( "  ", " ", TrainOrTestLines[i])
+    
+    # split the values out of the line (hoping there are no missing values or spurious whitesapace).
+    # note that this results in an empty first-column value.
+    # we will take that column as an opportunity for injecting the Subject column data
+    nestedList <-  strsplit( lineSingleDelims , split=" ")
+    
+    # fix the (unnecessary and unusable) nested type structure that R chose for the series of strings  
+    ithLineAsVector <- unlist( nestedList)
+    
+    # add line i to row i of matrix
+    matTrainOrTest[ i, ] <- ithLineAsVector
+  }
+  
+  matTrainOrTestWithSUbjectColumn <- cbind(  Subject = TrainOrTestSubjectsRead[ , 1], matTrainOrTest)
+  for (i in 1: nrow(matTrainOrTestWithSUbjectColumn))  {
+      matTrainOrTestWithSUbjectColumn[ i, 2 ] <- TestOrTrainActivityRead[i,]
+  }
+  matTrainOrTestWithSUbjectColumn
+}
+

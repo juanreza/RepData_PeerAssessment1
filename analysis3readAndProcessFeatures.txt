@@ -1,0 +1,104 @@
+  # changes existing feature names into valid column names with Mean and Std at the right of each name
+  ## change all delimiters to dash
+  ## eliminate more than one occurrance of Mean in a given name
+
+cleanColumnNames <- function( features) { # features: data.frame of strings
+  # featureNameMapNewToOld is generated in the calling scope
+  # return vector of all new column names in same order as original
+  newColumnNames <- c("Subject","Activity")
+  featureNameMapNewToOld <<- matrix( ncol=2, nrow=0)
+  
+  # accomodate R's arbitrary limitation on the form of column names    
+  fn <- make.names(features$V2, unique=TRUE) # transform feature names into basic valid unique csv column names
+
+  featureNameOriginal <- features$V2
+  for ( i in 1: nrow(features) ) {
+  
+    featureName <- fn[i]
+    # copy the original because we will need it later intact.
+    # acopy is necessary because featureName gets changed by gsub or something (bad)
+    
+    x <- gsub( "[.,)(\\-]", "-", featureName)
+    x <- gsub( "[-][-]", "-", x)
+    x <- gsub( "[-][-]", "-", x) # repeated because I don't trust R regex to work right
+    
+    
+    xm <- sub("mean","", featureName, ignore.case=TRUE)
+    xs <- sub("std","", featureName, ignore.case=TRUE)
+    
+    if (nchar(xm) != nchar(featureName) | nchar(xs) != nchar(featureName)) { # if featureName contains mean or std
+      x <- gsub( "[-]mean", "-Mean", x, ignore.case = TRUE)
+      x <- gsub( "mean[-]", "-Mean-", x, ignore.case = TRUE)
+      x <- gsub( "[-]std", "-Std", x, ignore.case = TRUE)
+      x <- gsub( "std[-]", "-Std-", x, ignore.case = TRUE)
+      
+      x <- gsub( "[-][-]", "-", x) 
+      x <- gsub( "[-][-]", "-", x) # repeated because I don't trust R regex to work right
+      x <- gsub( "[-]$", "", x)
+      
+      # eliminate multiple Mean substrings in the name
+      y1 <- sub( "Mean", "", x, ignore.case = TRUE)
+      y2 <- gsub( "Mean", "", x, ignore.case = TRUE)
+      if (nchar(y1) != nchar(y2)) {
+        x <- y1
+      }
+      
+      x <- gsub( "-MeanFreq-X", "-Freq-X-Mean", x, ignore.case = TRUE)
+      x <- gsub( "-MeanFreq-Y", "-Freq-Y-Mean", x, ignore.case = TRUE)
+      x <- gsub( "-MeanFreq-Z", "-Freq-Z-Mean", x, ignore.case = TRUE)
+      
+      x <- gsub( "MeanFreq", "-FreqMean", x, ignore.case = TRUE)
+      
+      x <- gsub( "-Mean-X", "-X-Mean", x, ignore.case = TRUE)
+      x <- gsub( "-Mean-Y", "-Y-Mean", x, ignore.case = TRUE)
+      x <- gsub( "-Mean-Z", "-Z-Mean", x, ignore.case = TRUE)
+      
+      x <- gsub( "-std-X", "-X-Std", x, ignore.case = TRUE)
+      x <- gsub( "-std-Y", "-Y-Std", x, ignore.case = TRUE)
+      x <- gsub( "-std-Z", "-Z-Std", x, ignore.case = TRUE)
+      
+      x <- gsub( "Mean-gravity", "gravity-Mean", x, ignore.case = TRUE)
+
+      x <- gsub( "X-gravity", "gravity-X", x, ignore.case = TRUE)
+      x <- gsub( "Y-gravity", "gravity-Y", x, ignore.case = TRUE)
+      x <- gsub( "Z-gravity", "gravity-Z", x, ignore.case = TRUE)
+      
+      x <- gsub( "Body", "B", x, ignore.case = TRUE)
+      x <- gsub( "Acc", "a", x, ignore.case = TRUE)
+      x <- gsub( "Gravity", "G", x, ignore.case = TRUE)
+      x <- gsub( "Jerk", "J", x, ignore.case = TRUE)
+      x <- gsub( "Gyro", "g", x, ignore.case = TRUE)
+      x <- gsub( "Mag", "M", x, ignore.case = TRUE)
+      x <- gsub( "Freq", "F", x, ignore.case = TRUE)
+      x <- gsub( "angle", "V", x, ignore.case = TRUE)
+      x <- gsub( "Mean", "u", x, ignore.case = TRUE)
+      x <- gsub( "std", "s", x, ignore.case = TRUE)
+      
+      x <- gsub( "[-][-]", "-", x)
+      x <- gsub( "[-][-]", "-", x)
+      x <- gsub( "[-]$", "", x)
+  
+      featureNameMapNewToOld <<- rbind( featureNameMapNewToOld, c( x, featureNameOriginal[i]))
+      
+    } else {
+      x <- gsub( "[-][-]", "-", x)
+      x <- gsub( "[-][-]", "-", x)
+      x <- gsub( "[-]$", "", x)
+    }
+    newColumnNames <- c( newColumnNames, x)
+  }
+  newColumnNames
+}
+
+
+applyTidyFeatureNamesAndExtractMainStdColumns <- function() {
+
+}
+
+
+readAndProcessFeatures <- function() {
+    p <- file.path( featuresDir, "features.txt")
+    features <-  read.csv( p,   header=FALSE, sep=" ",  comment.char = "#",  quote = "\"", stringsAsFactors=FALSE)
+    cleanColumnNamesNew <- cleanColumnNames(features)
+    cleanColumnNamesNew 
+}

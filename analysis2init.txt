@@ -1,0 +1,64 @@
+#1. Merges the training and the test sets to create one data set.
+init <- function() {
+# note
+# David's personal course project FAQ
+# Do we need the inertial folder
+# Short answer- no. Long answer- If you work very hard you can attach this very raw data to the more processed train and test X data, but a subsequent steps calls on you to get rid of all the variables that are not to do with mean or standard deviation (worked out from the column names- the features) and you have no names for those columns so they go. Seems a lot easier just to not include them in the first place
+
+
+# define parameters of the input data
+
+# number of features: corresponding to number of input columns
+nFeatures <<- 561
+
+nFeaturesPlusSubjectCount  <<- nFeatures + 1
+
+
+# number of lines in the X files were determined:
+## $ wc -l  train/X*t test/X*t
+## 7352 train/X_train.txt
+## 2947 test/X_test.txt
+
+
+#7352	lines in X training file
+XtrainLineCount <<- 7352
+
+#
+XtestLineCount <<- 2947
+
+#8978	char in one row
+xtrainLineLength <<- 8978
+
+#66006256	total chars in file verified
+
+# e.g.
+#  2.8858451e-001
+# 123456789012345
+
+# I got read.fwf to work but it corrupts the values:
+## fwfLines <- read.fwf( p , c(1,1,15,1,15,8978-33))
+## > fwfLines[1,3]
+## [1] 0.2885845
+
+
+if ( ! ("data.table" %in% rownames(installed.packages()))) {
+  install.packages("data.table")
+}
+library("data.table")
+
+#####
+
+# files...
+  trainDir <<-"getdata_projectfiles_UCI HAR Dataset/UCI HAR Dataset/train"
+  testDir <<- "getdata_projectfiles_UCI HAR Dataset/UCI HAR Dataset/test"
+  featuresDir <<- "getdata_projectfiles_UCI HAR Dataset/UCI HAR Dataset"
+  
+# clear the variables in case this is re-run  
+  train<<- NULL
+  trainSubjects<<- NULL
+  test<<- NULL
+  testSubjects<<- NULL
+  features<<- NULL
+
+}
+
