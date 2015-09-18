@@ -1,4 +1,4 @@
-# CodeBook for Assignment 2: Activity Sensor Measurements
+# CodeBook for Assignment: Activity Sensor Measurements
 
 This CodeBook describes the variables, data, and transformations  to clean the Activity Sensor Measurements data.
 The associated README.md explains how the scripts work and how they are connected.
@@ -17,6 +17,12 @@ The associated README.md explains how the scripts work and how they are connecte
 ###1. Cleaning Variable names.
 
    Variable names are derived from feature names.
+   
+   UNITS are included in the column (abbreviated) feature name !!!!!!!
+   
+   For example, the column "tBa-X-Mean" tells you that the values are in units of ACCELERATION ( "a" ).
+   See Table 1.
+   
    The justification for this cleaning operation is that the data is hard to follow in a spreadsheet or print out
    with header names that are quite long. They are often so similar that it amounts to a lot of visual noise.
 
