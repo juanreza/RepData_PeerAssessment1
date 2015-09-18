@@ -1,144 +1,87 @@
-README
+run_analysis.R
 
-The run_analysis.R program generates a tidy representation of the original activity data. The run_analysis.R file contains the "main" routine which sources (brings in) several other R files to define and perform certain functions. This approach keeps the code for major steps separate and easier to manage.
+#Title: Generate Tidy Data for Activity Sensor Measurements
 
-These subordinate R files are:
-
-source("analysis2init.txt")
-source("analysis3readAndProcessFeatures.txt")
-source("analysis4readAndProcessMeasurements.txt")
-
-To run the run_analysis.R file, setwd to the location where you have copied the files and do:
-
-source("run_analysis.R")
-
-The program expects the input files to reside under your working directory in the same hierarchy and with the same names as in the original zip file. The output files are in the top directory of the same.
-
-The hierarchy is:
-
-./
-
--rwxrwxrwx+ 1      1895 Jul 24 10:06 analysis2init.txt
--rwxrwxrwx+ 1      8492 Jul 24 09:51 analysis3readAndProcessFeatures.txt
--rwxrwxrwx+ 1      2732 Jul 24 14:34 analysis4readAndProcessMeasurements.txt
--rwxrwxrwx+ 1    654993 Jul 24 18:05 CodeBook.html
--rwxrwxrwx+ 1     12687 Jul 24 18:25 CodeBook.md
--rwxrwxrwx+ 1     12687 Jul 24 18:25 CodeBook.Rmd
-drwxrwxrwx+ 1         0 Jul 20 17:22 getdata_projectfiles_UCI HAR Dataset
--rwxrwxrwx+ 1  62556944 Jul 13 16:05 getdata_projectfiles_UCI HAR Dataset.zip
--rwxrwxrwx+ 1       739 Jul 24 18:34 README.Rmd
--rwxrwxrwx+ 1     14308 Jul 24 16:37 run_analysis.R
--rwxrwxrwx+ 1     13390 Jul 13 16:03 UCI Machine Learning Repository Human Activity Recognition Using Smartphones Data Set.htm
-drwxrwxrwx+ 1         0 Jul 13 16:03 UCI Machine Learning Repository Human Activity Recognition Using Smartphones Data Set_files
-
-./getdata_projectfiles_UCI HAR Dataset:
-total 20
--rwxrwxrwx+ 1  15971 Jul 20 17:22 combinedTrainingAndTestData.txt
-drwxrwxrwx+ 1      0 Jul 23 09:01 UCI HAR Dataset
-
-./getdata_projectfiles_UCI HAR Dataset/UCI HAR Dataset:
-total 86
--rwxrwxrwx+ 1     80 Oct 10  2012 activity_labels.txt
--rwxrwxrwx+ 1  15785 Oct 11  2012 features.txt
--rwxrwxrwx+ 1   3005 Jul 23 18:27 features_info.txt
--rwxrwxrwx+ 1   4492 Jul 20 12:07 README.txt
-drwxrwxrwx+ 1      0 Jul 13 16:05 test
-drwxrwxrwx+ 1      0 Jul 21 13:25 train
-
-./getdata_projectfiles_UCI HAR Dataset/UCI HAR Dataset/test:
-total 25860
-drwxrwxrwx+ 1         0 Jul 13 16:05 Inertial Signals
--rwxrwxrwx+ 1      7934 Nov 29  2012 subject_test.txt
--rwxrwxrwx+ 1  26458166 Nov 29  2012 X_test.txt
--rwxrwxrwx+ 1      5894 Nov 29  2012 y_test.txt
-
-./getdata_projectfiles_UCI HAR Dataset/UCI HAR Dataset/test/Inertial Signals:
-total 53100
--rwxrwxrwx+ 1  6041350 Nov 29  2012 body_acc_x_test.txt
--rwxrwxrwx+ 1  6041350 Nov 29  2012 body_acc_y_test.txt
--rwxrwxrwx+ 1  6041350 Nov 29  2012 body_acc_z_test.txt
--rwxrwxrwx+ 1  6041350 Nov 29  2012 body_gyro_x_test.txt
--rwxrwxrwx+ 1  6041350 Nov 29  2012 body_gyro_y_test.txt
--rwxrwxrwx+ 1  6041350 Nov 29  2012 body_gyro_z_test.txt
--rwxrwxrwx+ 1  6041350 Nov 29  2012 total_acc_x_test.txt
--rwxrwxrwx+ 1  6041350 Nov 29  2012 total_acc_y_test.txt
--rwxrwxrwx+ 1  6041350 Nov 29  2012 total_acc_z_test.txt
-
-./getdata_projectfiles_UCI HAR Dataset/UCI HAR Dataset/train:
-total 64524
-drwxrwxrwx+ 1         0 Jul 13 16:05 Inertial Signals
--rwxrwxrwx+ 1     20152 Nov 29  2012 subject_train.txt
--rwxrwxrwx+ 1  66006256 Nov 29  2012 X_train.txt
--rwxrwxrwx+ 1     14704 Nov 29  2012 y_train.txt
-
-./getdata_projectfiles_UCI HAR Dataset/UCI HAR Dataset/train/Inertial Signals:
-total 132480
--rwxrwxrwx+ 1  15071600 Nov 29  2012 body_acc_x_train.txt
--rwxrwxrwx+ 1  15071600 Nov 29  2012 body_acc_y_train.txt
--rwxrwxrwx+ 1  15071600 Nov 29  2012 body_acc_z_train.txt
--rwxrwxrwx+ 1  15071600 Nov 29  2012 body_gyro_x_train.txt
--rwxrwxrwx+ 1  15071600 Nov 29  2012 body_gyro_y_train.txt
--rwxrwxrwx+ 1  15071600 Nov 29  2012 body_gyro_z_train.txt
--rwxrwxrwx+ 1  15071600 Nov 29  2012 total_acc_x_train.txt
--rwxrwxrwx+ 1  15071600 Nov 29  2012 total_acc_y_train.txt
--rwxrwxrwx+ 1  15071600 Nov 29  2012 total_acc_z_train.txt
-
-./UCI Machine Learning Repository Human Activity Recognition Using Smartphones Data Set_files:
-total 36
--rwxrwxrwx+ 1  8457 Jul 13 16:02 logo.gif
--rwxrwxrwx+ 1  1551 Jul 13 16:02 Logo_25blk.gif
--rwxrwxrwx+ 1  2302 Jul 13 16:03 ml.css
--rwxrwxrwx+ 1  2641 Jul 13 16:02 nsfe.gif
--rwxrwxrwx+ 1  8299 Jul 13 16:02 rexaSmall.jpg
-
-
-Here is a summary "walk-through" of the major steps of the run_analysis.R program.
-
-
-###1. Merges the training and the test sets to create one data set.
-
-#### also injects the subject identifier on each respective row.
-
-###1a) prepare paths to the measurement data
-
-###1b) read the subject identifiers
-
-###1c) read the measurement data and inject corresponding subject identifiers
-
-###1d) trainMatrix  and testMatrix
-
-
-##2. Extracts only the measurements on the mean and standard deviation for each measurement. 
+##Usage:
+  unzip the getdata_projectfiles_UCI HAR Dataset.zip file into a directory named "data"
+      directly under a project directory of your choice.
   
+  Edit the run_analysis.R file.
+	source the run_analysis.R file.
+  
+  Find the results in the runAnalysisCleanAveragedReplicationMeasurements.txt file.
+	The program also generates two .csv file, intended only for convenience checking.
 
-### The readAndProcessFeatures() function this also deposits a mapping from old to new names
- into the variable (in this scope), featureNameMapNewToOld.
-this is intended for use in the Read.me documentation.
+##Details:
 
-###2a) read, tidy-up, and inject appropriate column names into the combinedMatrixReadyForColumnNames.
+  To edit the run_analysis.R file and change one line as follows.
+	Change the file path to match the path to your working directory (where you unzipped the input file).
+	
+  projectPath = file.path("C:","edu","_DataScienceJohnsHopkins","_GettingCleaningData","Project")
+	
+  So, if your project directory is as shown, "Project", it must contain a directory "data" in which 
+	  you have unzipped the input file.
 
-###2b) remove any duplicate-named columns, in anticipation of possible errors in the  next step
+##Note:
 
-###2c) remove the columns not pertaining to mean and standard deviation (keep mean and std: µ or s
-
-
-##3. Uses descriptive activity names to name the activities in the data set
-
-###3a) read the activity labels
-
-###3b) make a look-up table from the label code (index) to label names
-
-### integrate the activity label data with the training matrix, using the presently-empty second column
+    The program will install a package and load packages that it requires. No dependency preparation by user is needed.
 
 
+The unzipped hierarchy should resemble this:
+	
+data:
 
-##4. Appropriately labels the data set with descriptive variable names. 
-This has already been accomplished in step #2.
+drwxrwxrwx+ 1 You  None        0 Jul 20 17:22 getdata_projectfiles_UCI HAR Dataset
+-rwxrwxrwx+ 1 You  None 62556944 Aug 26 14:35 getdata_projectfiles_UCI HAR Dataset.zip
+-rwxrwxrwx+ 1 You  None      421 Aug 26 14:16 UCI Machine Learning Repository Human Activity Recognition Using Smartphones Data Set.website
 
-##5. From the data set in step 4, creates a second, independent tidy data set with the average of each variable for each activity and each subject.
+data/getdata_projectfiles_UCI HAR Dataset:
 
-### initialize new combined file
+-rwxrwxrwx+ 1 You  None 15971 Jul 20 17:22 combinedTrainingAndTestData.txt
+drwxrwxrwx+ 1 You  None     0 Jul 26 15:55 UCI HAR Dataset
 
- Compute the average for each combination Subject, Activity and measurement category.
+data/getdata_projectfiles_UCI HAR Dataset/UCI HAR Dataset:
 
-Write the file.
+-rwxrwxrwx+ 1 You  None    80 Oct 10  2012 activity_labels.txt
+-rwxrwxrwx+ 1 You  None 15785 Oct 11  2012 features.txt
+drwxrwxrwx+ 1 You  None     0 Jul 13 16:05 test
+drwxrwxrwx+ 1 You  None     0 Jul 21 13:25 train
+
+data/getdata_projectfiles_UCI HAR Dataset/UCI HAR Dataset/test:
+
+drwxrwxrwx+ 1 You  None        0 Jul 13 16:05 Inertial Signals
+-rwxrwxrwx+ 1 You  None     7934 Nov 29  2012 subject_test.txt
+-rwxrwxrwx+ 1 You  None 26458166 Nov 29  2012 X_test.txt
+-rwxrwxrwx+ 1 You  None     5894 Nov 29  2012 y_test.txt
+
+data/getdata_projectfiles_UCI HAR Dataset/UCI HAR Dataset/test/Inertial Signals:
+
+-rwxrwxrwx+ 1 You  None 6041350 Nov 29  2012 body_acc_x_test.txt
+-rwxrwxrwx+ 1 You  None 6041350 Nov 29  2012 body_acc_y_test.txt
+-rwxrwxrwx+ 1 You  None 6041350 Nov 29  2012 body_acc_z_test.txt
+-rwxrwxrwx+ 1 You  None 6041350 Nov 29  2012 body_gyro_x_test.txt
+-rwxrwxrwx+ 1 You  None 6041350 Nov 29  2012 body_gyro_y_test.txt
+-rwxrwxrwx+ 1 You  None 6041350 Nov 29  2012 body_gyro_z_test.txt
+-rwxrwxrwx+ 1 You  None 6041350 Nov 29  2012 total_acc_x_test.txt
+-rwxrwxrwx+ 1 You  None 6041350 Nov 29  2012 total_acc_y_test.txt
+-rwxrwxrwx+ 1 You  None 6041350 Nov 29  2012 total_acc_z_test.txt
+
+data/getdata_projectfiles_UCI HAR Dataset/UCI HAR Dataset/train:
+
+drwxrwxrwx+ 1 You  None        0 Jul 13 16:05 Inertial Signals
+-rwxrwxrwx+ 1 You  None    20152 Nov 29  2012 subject_train.txt
+-rwxrwxrwx+ 1 You  None 66006256 Nov 29  2012 X_train.txt
+-rwxrwxrwx+ 1 You  None    14704 Nov 29  2012 y_train.txt
+
+data/getdata_projectfiles_UCI HAR Dataset/UCI HAR Dataset/train/Inertial Signals:
+
+-rwxrwxrwx+ 1 You  None 15071600 Nov 29  2012 body_acc_x_train.txt
+-rwxrwxrwx+ 1 You  None 15071600 Nov 29  2012 body_acc_y_train.txt
+-rwxrwxrwx+ 1 You  None 15071600 Nov 29  2012 body_acc_z_train.txt
+-rwxrwxrwx+ 1 You  None 15071600 Nov 29  2012 body_gyro_x_train.txt
+-rwxrwxrwx+ 1 You  None 15071600 Nov 29  2012 body_gyro_y_train.txt
+-rwxrwxrwx+ 1 You  None 15071600 Nov 29  2012 body_gyro_z_train.txt
+-rwxrwxrwx+ 1 You  None 15071600 Nov 29  2012 total_acc_x_train.txt
+-rwxrwxrwx+ 1 You  None 15071600 Nov 29  2012 total_acc_y_train.txt
+-rwxrwxrwx+ 1 You  None 15071600 Nov 29  2012 total_acc_z_train.txt
+

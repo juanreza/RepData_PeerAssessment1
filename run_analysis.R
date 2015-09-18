@@ -1,235 +1,237 @@
-# to run this
+# usage:
 
-setwd("C:/edu/_DataScienceJohnsHopkins/_GettingCleaningData/Project")
+## Change these paths to suit your configuration. No other config changes are needed for this script
+projectPath = file.path("C:","edu","_DataScienceJohnsHopkins","_GettingCleaningData","Project")
+dataPath = file.path( projectPath ,"data")
 
-# source("analysis1Main.txt")
+# source this script and run it by entering: run()
 
-source("analysis2init.txt")
+# structure of this script
+# These functions are defined:
+# run() -- performs all initialization and executes the objective functions for this task:
+# cleanColumnNames() -- changes long feature names into valid column names. uses R's make.names and filters result further.
 
-source("analysis3readAndProcessFeatures.txt")
+setwd( projectPath)
 
-source("analysis4readAndProcessMeasurements.txt")
+#run <- function() {
 
-
-init()
+# initialization
+if ( ! ("data.table" %in% rownames(installed.packages()))) {
+  install.packages("data.table")
+}
+library("data.table")
+library(stringi)
 
 
 #1. Merges the training and the test sets to create one data set.
-# also injects the subject identifier on each respective row.
 
+# data.frame xData -- accumulates and organizes data for analysis:
+# read and combine training and test measurements, append activity and subject columns, revise column names
 
-#1a) prepare paths to the measurement data
-trainPath <- file.path( trainDir, "X_train.txt")
-testPath <- file.path( testDir, "X_test.txt")
+# data.frame activityCodes -- combines training and test activity codes (in same order as xData):
+# activity codes are tidied by replacing codes with activity names
 
+# data.frame subjectIds -- combines training and test subject codes (in same order as xData)
 
-#1b) read the subject identifiers
-p <- file.path( trainDir, "subject_train.txt")
-trainSubjectsRead <-  read.csv( p,   header=FALSE, sep=" ",  comment.char = "#",  quote = "\"", stringsAsFactors=FALSE)
-p <- file.path( testDir, "subject_test.txt")
-testSubjectsRead <-  read.csv( p,   header=FALSE, sep=" ",  comment.char = "#",  quote = "\"", stringsAsFactors=FALSE)
+# data.frame featuresTable -- accumulates and tidies feature names for use as measurement column names
 
+  metadataPath <- file.path( dataPath, "getdata_projectfiles_UCI HAR Dataset/UCI HAR Dataset")
+  features<- read.table( file.path( metadataPath, "features.txt"),  stringsAsFactors=FALSE)
 
-p <- file.path( trainDir, "y_train.txt")
-trainActivityRead <-  read.csv( p,   header=FALSE, sep=" ",  comment.char = "#",  quote = "\"", stringsAsFactors=FALSE)
-p <- file.path( testDir, "y_test.txt")
-testActivityRead <-  read.csv( p,   header=FALSE, sep=" ",  comment.char = "#",  quote = "\"", stringsAsFactors=FALSE)
+#
+# 4. Appropriately labels the data set with descriptive variable names.
+#
+  # feature names are modified and used as column (variable) names.
+  # place a  "mean" and "std" at the right, eliminate any multiple occurrences of "mean" in same feature name.
+  # abbreviate all words, unit names and symbols to single letter codes.
+  # generate a code table for use in the "code book".
 
+  features <- cleanColumnNames( features)
+  indices_of_good_features <- grep("-Mean|-Std", features[, 2]) 
 
+  measurementDataPath <- file.path( dataPath, "getdata_projectfiles_UCI HAR Dataset/UCI HAR Dataset")
+  trainPath <- file.path( measurementDataPath, "train")
+  testPath <- file.path( measurementDataPath, "test")
 
+  trainingData <- read.table( file.path( trainPath , "X_train.txt"))
+  testData  <- read.table( file.path( testPath , "X_test.txt"))
 
+#
+# 2. Extracts only the measurements on the mean and standard deviation for each measurement.
+#
+    trainingData  <- trainingData[, indices_of_good_features]
+    testData   <- testData[, indices_of_good_features]
 
-#1c) read the measurement data and inject corresponding subject and activity identifiers
-trainMatrix <- readAndProcessMeasurements(
-  trainPath, nFeaturesPlusSubjectCount , XtrainLineCount , trainSubjectsRead, trainActivityRead )
-testMatrix <- readAndProcessMeasurements( 
-  testPath, nFeaturesPlusSubjectCount , XtestLineCount , testSubjectsRead, testActivityRead )
-#1d) trainMatrix  and testMatrix
-combinedMatrixReadyForColumnNames <- rbind( trainMatrix, testMatrix)
+#
+# 1. Merges the training and the test sets to create one data set.
+#
+  xData <- rbind( trainingData, testData)
 
-# The combinedMatrixReadyForColumnNames satisfies step 1 of this assignment.
+# completes #2. Extracts only the measurements on the mean and standard deviation for each measurement.
+  names( xData) <- features[indices_of_good_features, 2]
 
+# prepare for # 3. Uses descriptive activity names to name the activities in the data set
 
-#2. Extracts only the measurements on the mean and standard deviation for each measurement. 
+  trainingActivityCodes <- read.table( file.path( trainPath , "y_train.txt"))
+  testActivityCodes  <- read.table( file.path( testPath , "y_test.txt"))
+  activityCodes <- rbind( trainingActivityCodes , testActivityCodes)
 
-# The readAndProcessFeatures() function this also deposits a mapping from old to new names
-## into the variable (in this scope), featureNameMapNewToOld.
-## This is intended for use in the Read.me documentation.
+    activityLabels <- read.table( file.path( metadataPath , "activity_labels.txt"))
+    activityLabels[, 2] <-  gsub( "_", " ", activityLabels[, 2])
+    activityLabels[, 2] = stri_trans_totitle( as.character( activityLabels[, 2]))
 
-#2a) read, tidy-up, and inject appropriate column names into the combinedMatrixReadyForColumnNames.
-cleanColumnNamesNew  <- readAndProcessFeatures()
+  activityCodes[,1] = activityLabels[ activityCodes[,1], 2] 
+  names( activityCodes ) <- "Activity" 
 
-colnames( combinedMatrixReadyForColumnNames ) <- cleanColumnNamesNew
+# gather subject data
+  trainingData <- read.table( file.path( trainPath , "subject_train.txt"))
+  testData  <- read.table( file.path( testPath , "subject_test.txt"))
+  subjectData <- rbind( trainingData, testData)
+  names( subjectData ) <- "Subject"
 
-#2b) remove any duplicate-named columns, in anticipation of possible errors in the  next step
-combinedMatrixNoDuplicateColumns <- combinedMatrixReadyForColumnNames [ , !duplicated(colnames(combinedMatrixReadyForColumnNames ))]
+# initialize for #5. From the data set in step 4, creates a second, independent tidy data set ...
+ compositeData <- cbind( subjectData, activityCodes, xData)
 
-#2c) remove the columns not pertaining to mean and standard deviation (keep mean and std: u or s
-combinedMatrix <- combinedMatrixNoDuplicateColumns[ , grepl( "[us]|Subject|Activity", colnames(combinedMatrixNoDuplicateColumns))]
+# just for checking the intermediate result
+ write.csv(compositeData , "compositeData.csv") 
 
+# prepare to generate "...average of each variable for each activity and each subject." for step #5.
+uniqueSubjects = sort( unique(subjectData[,1] ))
+uniqueActivities =  activityLabels[, 2]
 
-#3. Uses descriptive activity names to name the activities in the data set
+subjectIndex <- rep( uniqueSubjects , length(uniqueActivities))
+activityIndex <- rep( uniqueActivities, 1, each=length(uniqueSubjects ))
 
-#3a) read the activity labels
-p <- file.path( featuresDir, "activity_labels.txt")
-labelLines <-  readLines( p)
+nSubjectByActivity <- length(uniqueSubjects ) * length(uniqueActivities )
 
-#3b) make a look-up table from the label code (index) to label names
-labelLinesLabelsOnly <-  gsub("[0-9 ]+", "", labelLines)
-labelNumberToNameDataTable <- data.table(labelLinesLabelsOnly)
+# Kludge: this is a bad way to initialize the 2d array but nothing better in R
+  summarized  = compositeData [1:nSubjectByActivity , ] 
+  summarized[ , ] <-  NA   # compensate for the kludge: make sure no cruft from compositeData
 
-# FYI example lookup label from number code fix the  nested type structure that R chose for the series of strings)
-w <- unname( unlist( labelNumberToNameDataTable[2]))
+  nEndColumn <- ncol(compositeData)
 
+#
+# 5. From the data set in step 4, creates a second, independent tidy data set with the average of each variable for each activity and each subject.
+#
+  for ( iRow in 1: nSubjectByActivity ) {
+     ridiculous <- compositeData[
+                     compositeData$Subject == subjectIndex[iRow] 
+                   & compositeData$Activity == activityIndex[iRow], ] 
+     summarized[ iRow, 3:nEndColumn ] <- colMeans( ridiculous[, 3:nEndColumn ])
 
-combinedMatrixActivity <- combinedMatrix  #matrix( nrow=nrow(combinedMatrix), ncol=ncol(combinedMatrix))
+     summarized[ iRow, 1 ] <- subjectIndex[iRow]
 
-
-
-
-# integrate the activity label data with the training matrix, using the presently-empty second column
-for ( i in 1:nrow(combinedMatrix))  {
-  n <- combinedMatrixActivity[ i, "Activity"]
-  if (grepl("[0-9]", n)) {
-    combinedMatrixActivity[ i, "Activity"] <- unname( unlist(labelNumberToNameDataTable[ as.numeric(n)]))
+# complete #3. Uses descriptive activity names to name the activities in the data set
+     summarized[ iRow, 2 ] <- activityIndex[iRow]
   }
-}
 
+# generate file for "Please upload your data set as a txt file created with write.table() using row.name=FALSE"
+#write.table( summarized, "data_set_with_the_averages.txt", row.name=FALSE, sep=",") 
+write.table( format(summarized.all, digits=8), "data_set_with_the_averages.txt", row.name=FALSE, sep=",") 
 
-for ( i in 1:nrow(combinedMatrixActivity))  {
-  for (j in 3:ncol(combinedMatrixActivity))
-    combinedMatrixActivity[ i, j] <- as.numeric(combinedMatrixActivity[ i, j])
-}
+# just for checking results
+write.csv( summarized, "data_set_with_the_averages.csv") 
 
+# end of main procedure
 
+##############################################################
 
-#4. Appropriately labels the data set with descriptive variable names. 
+# for #4.	Appropriately labels the data set with descriptive variable names
 
-combinedMatrixActivity[1:3,1:5]
-## Subject Activity   tBa-X-u          tBa-Y-u           tBa-Z-u          
-## [1,] "1"     "STANDING" "2.8858451e-001" "-2.0294171e-002" "-1.3290514e-001"
-## [2,] "1"     "STANDING" "2.7841883e-001" "-1.6410568e-002" "-1.2352019e-001"
-## [3,] "1"     "STANDING" "2.7965306e-001" "-1.9467156e-002" "-1.1346169e-001"
+cleanColumnNames <- function( features) { # features: data.frame of strings updated in-place
+  # accomodate R's arbitrary limitation on the form of column names    
+  # transform feature names into basic valid unique csv column names
 
+  originalFeatureNames <- features$V2
+  features$V2 <- make.names( features$V2, unique=TRUE)
 
-Activities <- c("WALKING",
-                "WALKING_UPSTAIRS",
-                "WALKING_DOWNSTAIRS",
-                "SITTING",
-                "STANDING",
-                "LAYING"                )
-
-Subjects <- 1:30
-
- tidyColumnNames <-  cleanColumnNamesNew[2:length(cleanColumnNamesNew)]
- tidyColumnNames[1] <- "Subject_Activity"
-
-
-
-tidy <- matrix(  nrow=length(Activities)* length(Subjects),  ncol=length(tidyColumnNames))
-
-
-
-#activityAndSubject <- "Subject_Activity"
-
-colnames(tidy) <- tidyColumnNames
-
-mat <- combinedMatrixActivity
-
-for ( activity in Activities) {
-  for ( subject in Subjects) {
-    activityAndSubject <- unname(unlist( paste(subject,activity)))
-    for (column in tidyColumnNames) { #TODO: column names
-      if (column != "Subject_Activity") {
-        tidy[ tidy[ ,1]==activityAndSubject , column] <- 
-          mean(  as.numeric( mat[mat[ ,1]==subject & mat[, 2]==activity, column]), na.rm=TRUE)
+  featureNameOriginal <- features$V2
+  for ( i in 1: nrow(features) ) {
+  
+    featureName <- features$V2[[i]]
+    x <- gsub( "[.,)(\\-]", "-", featureName)
+    x <- gsub( "[-][-]", "-", x)
+    x <- gsub( "[-][-]", "-", x) # repeated because I don't trust R regex to work right
         
-        tidy[ tidy$Subject_Activity==activityAndSubject , column] <- 
-          mean( mat[ mat$Subject==subject & mat$Activity==activity, column], na.rm=TRUE)
-        
+    xm <- sub("mean","", featureName, ignore.case=TRUE)
+    xs <- sub("std","", featureName, ignore.case=TRUE)
+    
+    # if featureName contains mean or std-----------------------------
+    if (nchar(xm) != nchar(featureName) | nchar(xs) != nchar(featureName)) { 
+      x <- gsub( "[-]mean", "-Mean", x, ignore.case = TRUE)
+      x <- gsub( "mean[-]", "-Mean-", x, ignore.case = TRUE)
+      x <- gsub( "[-]std", "-Std", x, ignore.case = TRUE)
+      x <- gsub( "std[-]", "-Std-", x, ignore.case = TRUE)
+      
+      x <- gsub( "[-][-]", "-", x) 
+      x <- gsub( "[-][-]", "-", x) # repeated because I don't trust R regex to work right
+      x <- gsub( "[-]$", "", x)
+      
+      # eliminate multiple Mean substrings in the name
+      y1 <- sub( "Mean", "", x, ignore.case = TRUE)
+      y2 <- sub( "Mean", "", y1, ignore.case = TRUE)
+      if (nchar(y1) != nchar(y2)) {
+        x <- y1
       }
+      
+      y1 <- sub( "Std", "", x, ignore.case = TRUE)
+      y2 <- sub( "Std", "", y1, ignore.case = TRUE)
+      if (nchar(y1) != nchar(y2)) {
+        x <- y1
+      }   
+
+      x <- gsub( "-MeanFreq-X", "-Freq-X-Mean", x, ignore.case = TRUE)
+      x <- gsub( "-MeanFreq-Y", "-Freq-Y-Mean", x, ignore.case = TRUE)
+      x <- gsub( "-MeanFreq-Z", "-Freq-Z-Mean", x, ignore.case = TRUE)
+      
+      x <- gsub( "MeanFreq", "-FreqMean", x, ignore.case = TRUE)
+      
+      x <- gsub( "-Mean-X", "-X-Mean", x, ignore.case = TRUE)
+      x <- gsub( "-Mean-Y", "-Y-Mean", x, ignore.case = TRUE)
+      x <- gsub( "-Mean-Z", "-Z-Mean", x, ignore.case = TRUE)
+      
+      x <- gsub( "-std-X", "-X-Std", x, ignore.case = TRUE)
+      x <- gsub( "-std-Y", "-Y-Std", x, ignore.case = TRUE)
+      x <- gsub( "-std-Z", "-Z-Std", x, ignore.case = TRUE)
+      
+      x <- gsub( "Mean-gravity", "gravity-Mean", x, ignore.case = TRUE)
+
+      x <- gsub( "X-gravity", "gravity-X", x, ignore.case = TRUE)
+      x <- gsub( "Y-gravity", "gravity-Y", x, ignore.case = TRUE)
+      x <- gsub( "Z-gravity", "gravity-Z", x, ignore.case = TRUE)
+      
+      x <- gsub( "Body", "B", x, ignore.case = TRUE)
+      x <- gsub( "Acc", "a", x, ignore.case = TRUE)
+      x <- gsub( "Gravity", "G", x, ignore.case = TRUE)
+      x <- gsub( "Jerk", "J", x, ignore.case = TRUE)
+      x <- gsub( "Gyro", "g", x, ignore.case = TRUE)
+      x <- gsub( "Mag", "M", x, ignore.case = TRUE)
+      x <- gsub( "Freq", "F", x, ignore.case = TRUE)
+      x <- gsub( "angle", "V", x, ignore.case = TRUE)
+
+#      x <- gsub( "Mean", "u", x, ignore.case = TRUE)
+#      x <- gsub( "std", "s", x, ignore.case = TRUE)
+      
+      x <- gsub( "[-][-]", "-", x)
+      x <- gsub( "[-][-]", "-", x)
+      x <- gsub( "[-]$", "", x)
+
+      # generate code-book table of tidy column names to corresponding feature names
+     print( sprintf( "%s %s %s", i, x, originalFeatureNames[i]))
+      
+#   } else { # ignore features that do not contain mean or std (columns will be ignored)
+#      x <- gsub( "[-][-]", "-", x)
+#      x <- gsub( "[-][-]", "-", x)
+#      x <- gsub( "[-]$", "", x)
+ 
     }
+    features$V2[[i]] <-  x
+  # check uniqueness (no accidental trailing mean or std:
+  #    print( sprintf( "%s %s %s", i, x, originalFeatureNames[i]))
+
   }
+  features
 }
-
-
-
-
-
-
-#5. From the data set in step 4, creates a second, independent
-## tidy data set
-## with the average of each variable for each activity and each subject.
-
-
-# initialize new combined file
-resultsDir <- "getdata_projectfiles_UCI HAR Dataset"
-p <- file.path( resultsDir, "combinedTrainingAndTestData.txt")
-
-df <- as.data.frame( matTrainWithSubjectColumn)
-
-
-
-
-#TODO: if you saved the file with write.table according to the instructions, the command for reading it in and looking at it in R would be
-data <- read.table(file_path, header = TRUE) #if they used some other way of saving the file than a default write.table, this step will be different
-View(data)
-to make life easy for their marker would give the code for reading the file back into R in the readMe. 
-
-Go back to quiz 1 and look at the codebook there for inspiration.
-
-quiz 3 on reshaping - regarding step 4 of this project.
-
-
-
-
-https://class.coursera.org/getdata-030/forum/thread?thread_id=266
-Hi everyone. I have got the tidy data set as per step 5. However, my write.table function is giving a text file which is unreadable, instead of a neat and tidy dataset. The last line of my script is:
-  write.table(df,"./df.txt", row.name=FALSE)
-Any suggestions on what I am doing wrong?
-Also, since the file is on my computer, will the link work when my fellow students are grading my project?
-Thanks!
-  David HoodCommunity TA? 2 hours ago 㼿
-That is as expected. Tidy means easy for computers to process, not pleasing to the human eye. Anyone marking the project has, by definition done the project, and is capable of using read.txt("file", header=TRUE)
-
----------------
-  
-  
-  
-  
-  > # Compute the average (median miles per gallon and horsepower of each automobile manufacturer)
-  > dataset <- data.frame(manufacturer = c("chevrolet", "chevrolet", "dodge", "dodge", "ford", "ford"), model = c("suburban", "sierra", "ram 2500", "ram 1500", "f150", "f250"), mpg = c(5, 7, 10, 8, 5, 6), hp = c(125, 115, 250, 150, 135, 225))
-> dataset
-manufacturer    model mpg  hp
-1    chevrolet suburban   5 125
-2    chevrolet   sierra   7 115
-3        dodge ram 2500  10 250
-4        dodge ram 1500   8 150
-5         ford     f150   5 135
-6         ford     f250   6 225
-> d <- melt(data = dataset, 
-            +         id=c("manufacturer"), 
-            +         measure.vars = colnames(dataset[,grep("mpg|hp",colnames(dataset))]))
-> d
-manufacturer variable value
-1     chevrolet      mpg     5
-2     chevrolet      mpg     7
-3         dodge      mpg    10
-4         dodge      mpg     8
-5          ford      mpg     5
-6          ford      mpg     6
-7     chevrolet       hp   125
-8     chevrolet       hp   115
-9         dodge       hp   250
-10        dodge       hp   150
-11         ford       hp   135
-12         ford       hp   225
-> d <- dcast(d, manufacturer ~ variable, median)
-> d
-manufacturer mpg  hp
-1    chevrolet 6.0 120
-2        dodge 9.0 200
-3         ford 5.5 180
 
 
 
