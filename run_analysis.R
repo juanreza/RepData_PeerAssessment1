@@ -1,4 +1,4 @@
-# usage:
+# run_analysis.R usage:
 
 ## Change these paths to suit your configuration. No other config changes are needed for this script
 projectPath = file.path("C:","edu","_DataScienceJohnsHopkins","_GettingCleaningData","Project")
@@ -47,7 +47,7 @@ library(stringi)
   # generate a code table for use in the "code book".
 
   features <- cleanColumnNames( features)
-  indices_of_good_features <- grep("-Mean|-Std", features[, 2]) 
+  featuresIndexArray <- grep("-Mean|-Std", features[, 2]) 
 
   measurementDataPath <- file.path( dataPath, "getdata_projectfiles_UCI HAR Dataset/UCI HAR Dataset")
   trainPath <- file.path( measurementDataPath, "train")
@@ -59,8 +59,8 @@ library(stringi)
 #
 # 2. Extracts only the measurements on the mean and standard deviation for each measurement.
 #
-    trainingData  <- trainingData[, indices_of_good_features]
-    testData   <- testData[, indices_of_good_features]
+    trainingData  <- trainingData[, featuresIndexArray]
+    testData   <- testData[, featuresIndexArray]
 
 #
 # 1. Merges the training and the test sets to create one data set.
@@ -68,7 +68,7 @@ library(stringi)
   xData <- rbind( trainingData, testData)
 
 # completes #2. Extracts only the measurements on the mean and standard deviation for each measurement.
-  names( xData) <- features[indices_of_good_features, 2]
+  names( xData) <- features[featuresIndexArray, 2]
 
 # prepare for # 3. Uses descriptive activity names to name the activities in the data set
 
@@ -126,11 +126,10 @@ nSubjectByActivity <- length(uniqueSubjects ) * length(uniqueActivities )
   }
 
 # generate file for "Please upload your data set as a txt file created with write.table() using row.name=FALSE"
-#write.table( summarized, "data_set_with_the_averages.txt", row.name=FALSE, sep=",") 
-write.table( format(summarized.all, digits=8), "data_set_with_the_averages.txt", row.name=FALSE, sep=",") 
+write.table( format(summarized, digits=8), "runAnalysisCleanAveragedReplicationMeasurements.txt", row.name=FALSE, sep=",") 
 
 # just for checking results
-write.csv( summarized, "data_set_with_the_averages.csv") 
+write.csv( format(summarized, digits=8), "runAnalysisCleanAveragedReplicationMeasurements.csv") 
 
 # end of main procedure
 
